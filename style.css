@@ -1,53 +1,214 @@
+:root {
+  --bg-dark: #0b0f19;
+  --bg-menu: rgba(13, 18, 36, 0.85);
+  --bg-card: rgba(21, 29, 56, 0.6);
+  --border-color: rgba(0, 234, 255, 0.2);
+  --accent-color: #00eaff;
+  --accent-secondary: #5cffc7;
+  --text-main: #ffffff;
+  --text-muted: #9da8c7;
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --transition-fast: 0.2s ease;
+  --shadow-glow: 0 0 20px rgba(0, 234, 255, 0.3);
+}
+
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
 body {
-    margin: 0;
-    min-height: 100%;
-    background: #10131b;
-    color: #fff;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  overflow: hidden;
 }
 
 body {
-    display: grid;
-    place-items: center;
-    font-family: system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+
 #stage {
-    position: relative;
-    width: min(100vw, 960px);
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
 }
 
 #game {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background: #172033;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #172033;
 }
 
 #hud {
-    position: absolute;
-    left: 1rem;
-    top: 1rem;
-    pointer-events: none;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  pointer-events: none;
+  z-index: 5;
 }
+
 
 #menu {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-content: center;
-    text-align: center;
-    background: rgb(0 0 0 / .55);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(180deg,
+      rgba(8, 12, 35, 0.6) 0%,
+      rgba(5, 8, 20, 0.95) 100%);
+  backdrop-filter: blur(8px);
+  transition: opacity 0.3s ease;
 }
 
-button {
-    font: inherit;
-    padding: .6rem 1rem;
-    cursor: pointer;
+.menu-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  width: min(420px, 90%);
+}
+
+
+.game-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: var(--text-main);
+  text-shadow: 0 0 15px var(--accent-color), 0 0 30px rgba(0, 234, 255, 0.4);
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+
+.menu-box {
+  width: 100%;
+  padding: 1.8rem;
+  background: var(--bg-menu);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  margin-bottom: 1.8rem;
+}
+
+.menu-text {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+#start {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-secondary));
+  color: #06101d;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: var(--shadow-glow);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+#start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(0, 234, 255, 0.7);
+}
+
+#start:active {
+  transform: translateY(1px);
+}
+
+
+.controls {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--accent-color);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.key-wide {
+  min-width: 60px;
+}
+
+.control-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: 0.2rem;
+}
+
+
+@media (max-width: 600px) {
+  .game-title {
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+  }
+
+  .menu-box {
+    padding: 1.2rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
 }

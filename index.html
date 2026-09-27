@@ -2,21 +2,46 @@
 <html lang="uz">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mening platformerim</title>
-    <link rel="stylesheet" href="./style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Platformer O'yini</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 
 <body>
-    <main id="stage" aria-label="Platformer o‘yini">
-        <canvas id="game" width="960" height="540" aria-label="O‘yin maydoni"></canvas>
-        <div id="hud" aria-live="off"></div>
-        <div id="menu">
-            <h1>Mening platformerim</h1><button id="start">Boshlash</button>
+  <main id="stage" aria-label="Platformer o‘yini">
+    <canvas id="game" width="960" height="540" aria-label="O‘yin maydoni"></canvas>
+
+    <div id="hud" aria-live="off"></div>
+
+    <div id="menu">
+      <div class="menu-content">
+        <h1 class="game-title">PLATFORMER</h1>
+        <p class="subtitle">Sarguzashtni boshlang</p>
+
+        <div class="menu-box">
+          <p class="menu-text">
+            Yangi dunyoni kashf eting va barcha to'siqlardan o'ting!
+          </p>
+          <button id="start">▶ BOSHLASH</button>
         </div>
-    </main>
-    <script src="./js/main.js"></script>
+
+        <div class="controls">
+          <div class="control-group">
+            <span class="key">A</span>
+            <span class="key">D</span>
+            <span class="control-label">Harakat</span>
+          </div>
+          <div class="control-group">
+            <span class="key key-wide">SPACE</span>
+            <span class="control-label">Sakrash</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
 </body>
 
 </html>
