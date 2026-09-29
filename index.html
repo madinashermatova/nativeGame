@@ -6,24 +6,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Platformer O'yini</title>
   <link rel="stylesheet" href="./style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 </head>
 
 <body>
   <main id="stage" aria-label="Platformer o‘yini">
     <canvas id="game" width="960" height="540" aria-label="O‘yin maydoni"></canvas>
 
-    <div id="hud" aria-live="off"></div>
-
     <div id="menu">
+      <div class="clouds clouds-far" aria-hidden="true"></div>
+      <div class="clouds clouds-near" aria-hidden="true"></div>
+      <div class="land" aria-hidden="true"></div>
+
       <div class="menu-content">
-        <h1 class="game-title">PLATFORMER</h1>
-        <p class="subtitle">Sarguzashtni boshlang</p>
+        <h1 class="game-title">Platformer</h1>
 
         <div class="menu-box">
           <p class="menu-text">
             Yangi dunyoni kashf eting va barcha to'siqlardan o'ting!
           </p>
-          <button id="start">▶ BOSHLASH</button>
+          <button id="start">Boshlash</button>
         </div>
 
         <div class="controls">
@@ -33,7 +37,7 @@
             <span class="control-label">Harakat</span>
           </div>
           <div class="control-group">
-            <span class="key key-wide">SPACE</span>
+            <span class="key key-wide">Space</span>
             <span class="control-label">Sakrash</span>
           </div>
         </div>

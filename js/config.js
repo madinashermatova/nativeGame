@@ -1,23 +1,14 @@
-export const TILE = 32;
+export const VH = 270;
+export const BASE_W = 480;
+export const T = 16;
+export const STEP = 1000 / 60;
 
-export const STEP = 1 / 60;
-export const MAX_FRAME = 0.25;
-export const MAX_STEPS = 5;
+export const ACC = 0.2;
+export const FRICTION = 0.78;
+export const MAXV = 2.1;
+export const JUMP = 5.8;
+export const GRAV = 0.28;
+export const MAXFALL = 6.5;
+export const START_LIVES = 3;
 
-export const PLAYER_TUNE = {
-    maxRun: 300,
 
-    groundAccel: 2400,
-    groundFriction: 2000,
-
-    airAccel: 1300,
-    airFriction: 400,
-
-    gravity: 1900,
-    maxFall: 800,
-
-    jumpSpeed: 700,
-
-    coyoteTime: 0.12,
-    jumpBufferTime: 0.12
-};

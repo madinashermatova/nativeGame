@@ -35,180 +35,286 @@ body {
   justify-content: center;
 }
 
-
 #stage {
+  --img-sky: url("assets/images/bg-sky.png");
+  --img-clouds-far: url("assets/images/bg-clouds.png");
+  --img-clouds-near: url("assets/images/bg-clouds-near.png");
+  --img-land: url("assets/images/bg-land.png");
+  --px-font: "Press Start 2P", "Courier New", monospace;
+  --ink: #0d0b2e;
+  --yellow: #ffd23f;
+  --red: #ff3b3b;
+  --white: #ffffff;
+  --muted: #cfd0ff;
+
   position: relative;
-  width: 100%;
-  height: 100%;
-  max-width: 100vw;
-  max-height: 100vh;
-  aspect-ratio: 16 / 9;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+  font-family: var(--px-font);
+  color: var(--white);
 }
 
 #game {
   display: block;
   width: 100%;
   height: 100%;
-  background: #172033;
-}
-
-#hud {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  pointer-events: none;
-  z-index: 5;
+  background: var(--ink);
+  image-rendering: pixelated;
 }
 
 
+
+/* ---------- Kirish ekrani ---------- */
 #menu {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 10;
+  overflow: hidden;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: linear-gradient(180deg,
-      rgba(8, 12, 35, 0.6) 0%,
-      rgba(5, 8, 20, 0.95) 100%);
-  backdrop-filter: blur(8px);
+  background: var(--img-sky) center bottom / cover no-repeat, var(--ink);
+  image-rendering: pixelated;
   transition: opacity 0.3s ease;
 }
 
+/* CRT: vinyetka */
+#menu::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+}
+
+/* CRT: skanliniyalar */
+#menu::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px);
+  pointer-events: none;
+}
+
 .menu-content {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 0 1.5rem 1.6rem;
   text-align: center;
-  padding: 2rem;
-  width: min(420px, 90%);
 }
 
-
+/* ---------- Sarlavha ---------- */
 .game-title {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 900;
-  letter-spacing: 4px;
-  color: var(--text-main);
-  text-shadow: 0 0 15px var(--accent-color), 0 0 30px rgba(0, 234, 255, 0.4);
-  margin-bottom: 0.25rem;
-}
-
-.subtitle {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  letter-spacing: 4px;
+  margin-top: clamp(1.5rem, 9%, 4rem);
+  font-family: var(--px-font);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 7vw, 4.2rem);
+  line-height: 1.2;
   text-transform: uppercase;
-  margin-bottom: 2rem;
+  color: var(--yellow);
+  text-shadow:
+    4px 4px 0 var(--red),
+    8px 8px 0 var(--ink);
 }
 
-
+/* ---------- Piksel ramkali panel ---------- */
 .menu-box {
-  width: 100%;
-  padding: 1.8rem;
-  background: var(--bg-menu);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  margin-bottom: 1.8rem;
+  margin-top: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 1.4rem 1.8rem 1.6rem;
+  background: var(--ink);
+  box-shadow:
+    0 -4px 0 0 var(--white),
+    0 4px 0 0 var(--white),
+    -4px 0 0 0 var(--white),
+    4px 0 0 0 var(--white),
+    12px 12px 0 0 rgba(0, 0, 0, 0.5);
 }
 
 .menu-text {
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
+  max-width: 34ch;
+  font-size: 0.6rem;
+  line-height: 2;
+  color: var(--muted);
 }
 
 #start {
-  width: 100%;
-  padding: 0.9rem 1.5rem;
+  position: relative;
+  padding: 1rem 1.6rem;
+  background: var(--yellow);
+  color: var(--ink);
   border: none;
-  border-radius: 10px;
-  background: linear-gradient(90deg, var(--accent-color), var(--accent-secondary));
-  color: #06101d;
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 2px;
+  font-family: var(--px-font);
+  font-size: 0.85rem;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: var(--shadow-glow);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow:
+    0 -4px 0 0 var(--ink),
+    0 4px 0 0 var(--ink),
+    -4px 0 0 0 var(--ink),
+    4px 0 0 0 var(--ink),
+    0 8px 0 0 var(--red);
+}
+
+#start::before {
+  content: ">";
+  margin-right: 0.7rem;
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 #start:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(0, 234, 255, 0.7);
+  background: var(--red);
+  color: var(--white);
 }
 
 #start:active {
-  transform: translateY(1px);
+  transform: translateY(4px);
+  box-shadow:
+    0 -4px 0 0 var(--ink),
+    0 4px 0 0 var(--ink),
+    -4px 0 0 0 var(--ink),
+    4px 0 0 0 var(--ink);
 }
 
+#start:focus-visible {
+  outline: 4px dashed var(--white);
+  outline-offset: 8px;
+}
 
+/* ---------- Boshqaruv ---------- */
 .controls {
+  margin-top: auto;
   display: flex;
-  gap: 1.5rem;
+  gap: 2.4rem;
   align-items: center;
   justify-content: center;
+  padding: 0.7rem 1.2rem;
+  background: rgba(13, 11, 46, 0.85);
+  box-shadow:
+    0 -4px 0 0 var(--muted),
+    0 4px 0 0 var(--muted),
+    -4px 0 0 0 var(--muted),
+    4px 0 0 0 var(--muted);
 }
 
 .control-group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
-  height: 30px;
-  padding: 0 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--accent-color);
-  font-weight: 700;
-  font-size: 0.85rem;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 0.6rem;
+  box-shadow: 0 4px 0 0 #6b6b8a;
 }
 
 .key-wide {
-  min-width: 60px;
+  min-width: 68px;
 }
 
 .control-label {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-left: 0.2rem;
+  margin-left: 0.3rem;
+  font-size: 0.55rem;
+  color: var(--muted);
 }
 
-
 @media (max-width: 600px) {
-  .game-title {
-    font-size: 2.2rem;
-    letter-spacing: 2px;
-  }
-
-  .subtitle {
-    font-size: 0.75rem;
-    letter-spacing: 2px;
-  }
-
   .menu-box {
-    padding: 1.2rem;
+    padding: 1.1rem 1.2rem 1.3rem;
   }
 
   .controls {
-    flex-direction: column;
-    gap: 0.8rem;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .control-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start::before {
+    animation: none;
+  }
+}
+
+/* ---------- Suzuvchi bulutlar (chapdan o'ngga) ---------- */
+.clouds {
+  --tile: max(100vw, calc(100vh * 16 / 9));
+  /* rasm 16:9, ekranni "cover" qiladi */
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--tile) * 2);
+  height: calc(var(--tile) * 9 / 16);
+  z-index: 0;
+  background-repeat: repeat-x;
+  background-size: var(--tile) 100%;
+  background-position: left bottom;
+  image-rendering: pixelated;
+  pointer-events: none;
+  will-change: transform;
+  animation: drift linear infinite;
+}
+
+.clouds-far {
+  background-image: var(--img-clouds-far);
+  animation-duration: 260s;
+}
+
+.clouds-near {
+  background-image: var(--img-clouds-near);
+  animation-duration: 140s;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ---------- Tog'lar, o'rmon va yer (bulutlar ustida) ---------- */
+.land {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--img-land) center bottom / cover no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clouds {
+    animation: none;
   }
 }
