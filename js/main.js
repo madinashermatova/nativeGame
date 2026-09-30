@@ -1,10 +1,10 @@
 import { VH, START_LIVES, STEP, T } from './config.js';
 import { loadLevel, COLS, ROWS } from './level.js';
-import { initAudio } from './audio.js';
+import { initAudio, sfx } from './audio.js';
 import { setupInput } from './input.js';
 import { spawnPlayer, updatePlayer } from './player.js';
 import { updateEnemies } from './enemy.js';
-import { drawBackground, drawWorld, drawOverlay } from './renderer.js';
+import { drawBackground, drawWorld, drawOverlay, drawHUD } from './renderer.js';
 import { gameState } from './state.js';
 import { clamp } from './utils.js';
 
@@ -13,28 +13,26 @@ const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
 let startBtn = null;
 
-
 let VW = 480;
 let SCALE = 2;
 
 loadLevel(0);
 
-
 function reset() {
   gameState.camX = 0;
   
-  if (gameState.state === 'won') {
-    loadLevel(0);
-  } else if (gameState.lives <= 0) {
-    gameState.lives = START_LIVES;
+  if (gameState.state === 'won' || gameState.lives <= 0) {
+    gameState.deaths = 0;
     gameState.coinCount = 0;
+    gameState.levelTime = 0;
+    gameState.currentLevel = 0;
+    gameState.lives = START_LIVES;
     loadLevel(0);
   } else {
     loadLevel(gameState.currentLevel);
   }
   
   gameState.p = spawnPlayer();
-
 }
 
 function hideMenu() {
@@ -49,7 +47,6 @@ function showMenu() {
 }
 
 function startGame() {
-  console.log('startGame called — current state:', gameState.state, 'currentLevel:', gameState.currentLevel);
   initAudio();
   reset();
   gameState.state = 'playing';
@@ -60,10 +57,16 @@ function startGame() {
 setupInput({
   getState: () => gameState.state,
   onEnter: (e) => {
-    if (gameState.state === 'over' || gameState.state === 'won') { startGame(); e.preventDefault(); }
+    if (gameState.state === 'over' || gameState.state === 'won') {
+      startGame();
+      e.preventDefault();
+    }
   },
   onEscape: (e) => {
-    if (gameState.state === 'playing') { gameState.state = 'menu'; showMenu(); }
+    if (gameState.state === 'playing') {
+      gameState.state = 'menu';
+      showMenu();
+    }
   },
   onJump: () => {
     if (gameState.p) gameState.p.jumpBuf = 8;
@@ -74,8 +77,6 @@ function attachStartHandler() {
   startBtn = document.getElementById('start');
   if (startBtn) {
     startBtn.addEventListener('click', startGame);
-  } else {
-    console.warn('Start button not found when attaching handler');
   }
 }
 
@@ -85,31 +86,42 @@ else attachStartHandler();
 function update() {
   gameState.anim++;
   if (gameState.state !== 'playing') return;
+
+  gameState.levelTime += STEP / 1000;
+
   updatePlayer({ 
     getVH: () => VH,
     nextLevel: () => {
       sfx.win();
-      loadLevel(gameState.currentLevel + 1);
+      gameState.currentLevel++;
+      loadLevel(gameState.currentLevel);
       if (gameState.state !== 'won') {
         gameState.p = spawnPlayer();
         gameState.camX = 0;
       }
     }
   });
+
   if (gameState.state !== 'playing') return;
-  updateEnemies();
+  updateEnemies({ getVH: () => VH });
   
-  for (let i = gameState.trails.length - 1; i >= 0; i--) {
-    const t = gameState.trails[i];
-    t.x += t.vx;
-    t.y += t.vy;
-    t.vy -= 0.02;
-    t.age++;
-    if (t.age >= t.life) gameState.trails.splice(i, 1);
+  // Qon zarrachalarini yangilash (Lightweight dynamic blood drops)
+  if (gameState.bloodParticles) {
+    for (let i = gameState.bloodParticles.length - 1; i >= 0; i--) {
+      const bp = gameState.bloodParticles[i];
+      bp.x += bp.vx;
+      bp.y += bp.vy;
+      bp.vy += 0.12;
+      bp.life--;
+      if (bp.life <= 0) gameState.bloodParticles.splice(i, 1);
+    }
   }
+
   const p = gameState.p;
-  const target = clamp(p.x + p.w / 2 - VW / 2 + p.face * 20, 0, COLS * T - VW);
-  gameState.camX += (target - gameState.camX) * 0.1;
+  if (p) {
+    const target = clamp(p.x + p.w / 2 - VW / 2 + p.face * 20, 0, COLS * T - VW);
+    gameState.camX += (target - gameState.camX) * 0.1;
+  }
 }
 
 function render() {
@@ -117,7 +129,8 @@ function render() {
   ctx.imageSmoothingEnabled = false;
   drawBackground(ctx, VW, gameState.camX, gameState.anim);
   if (gameState.p) drawWorld(ctx, VW, gameState.camX, gameState.p, gameState.anim, gameState);
-  drawOverlay(ctx, gameState.state, VW, VH, gameState.coinCount, gameState.coins.length, gameState.anim);
+  if (gameState.state === 'playing') drawHUD(ctx, VW, gameState);
+  drawOverlay(ctx, gameState.state, VW, VH, gameState.coinCount, gameState.coins.length, gameState.anim, gameState);
 }
 
 function resize() {

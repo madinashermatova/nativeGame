@@ -1,7 +1,7 @@
 import { ACC, FRICTION, MAXV, JUMP, GRAV, MAXFALL, T } from './config.js';
 import { keys } from './input.js';
 import { sfx } from './audio.js';
-import { moveX, moveY } from './physics.js';
+import { moveX, moveY, checkWallContact } from './physics.js';
 import { clamp, overlap } from './utils.js';
 import { gameState } from './state.js';
 
@@ -9,11 +9,12 @@ export function spawnPlayer() {
   return { 
     x: gameState.spawnX, 
     y: gameState.spawnY, 
-    w: 10, 
+    w: 12, 
     h: 14,
     vx: 0, 
     vy: 0, 
     onGround: false, 
+    touchWall: false,
     face: 1, 
     coyote: 0, 
     jumpBuf: 0, 
@@ -21,71 +22,156 @@ export function spawnPlayer() {
   };
 }
 
+export function emitBlood(x, y, count = 1, vxSpread = 0.5, vySpread = 0.5) {
+  for (let i = 0; i < count; i++) {
+    gameState.bloodParticles.push({
+      x: x + (Math.random() - 0.5) * 3,
+      y: y + (Math.random() - 0.5) * 3,
+      vx: (Math.random() - 0.5) * vxSpread,
+      vy: (Math.random() - 0.5) * vySpread - (Math.random() * 0.4),
+      r: Math.random() < 0.6 ? 2 : 1,
+      life: 18 + Math.floor(Math.random() * 12),
+      maxLife: 30,
+      color: Math.random() < 0.5 ? '#b80018' : '#e61937'
+    });
+  }
+}
+
 export function die(callbacks) {
   sfx.die();
+  if (gameState.p) {
+    emitBlood(gameState.p.x + gameState.p.w / 2, gameState.p.y + gameState.p.h / 2, 22, 2.8, 2.8);
+  }
+  gameState.deaths++;
   gameState.lives--;
 
-  if (gameState.lives <= 0) { gameState.state = 'over'; return; }
+  if (gameState.lives <= 0) {
+    gameState.state = 'over';
+    return;
+  }
   gameState.p = spawnPlayer();
-  gameState.p.inv = 120;
+  gameState.p.inv = 60;
 }
 
 export function updatePlayer(callbacks) {
   const p = gameState.p;
+  if (!p) return;
+
   const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-  if (dir) { p.vx += dir * ACC; p.face = dir; }
-  else { p.vx *= FRICTION; if (Math.abs(p.vx) < 0.05) p.vx = 0; }
+  if (dir) {
+    p.vx += dir * ACC;
+    p.face = dir;
+  } else {
+    p.vx *= FRICTION;
+    if (Math.abs(p.vx) < 0.05) p.vx = 0;
+  }
   p.vx = clamp(p.vx, -MAXV, MAXV);
 
-  p.coyote = p.onGround ? 6 : Math.max(0, p.coyote - 1);
+  // Check wall contact for free wall-contact jump
+  const wall = checkWallContact(p);
+  const touchingWall = (wall.left || wall.right) && !p.onGround;
+  p.touchWall = touchingWall;
+
+  if (p.onGround) {
+    p.coyote = 6;
+  } else if (touchingWall) {
+    p.coyote = 6; // Erkin kontaktli sakrash
+  } else if (p.coyote > 0) {
+    p.coyote--;
+  }
+
   if (p.jumpBuf > 0) p.jumpBuf--;
-  if (p.jumpBuf > 0 && p.coyote > 0) { p.vy = -JUMP; p.jumpBuf = 0; p.coyote = 0; sfx.jump(); }
+  if (p.jumpBuf > 0 && p.coyote > 0) {
+    p.vy = -JUMP;
+    p.jumpBuf = 0;
+    p.coyote = 0;
+    sfx.jump();
+    emitBlood(p.x + p.w / 2, p.y + p.h, 3, 1.0, 0.6);
+  }
   if (!keys.jump && p.vy < -2.4) p.vy = -2.4;
 
-  p.vy = Math.min(p.vy + GRAV, MAXFALL);
+  if (touchingWall && p.vy > 0) {
+    p.vy = Math.min(p.vy + GRAV * 0.65, 2.8); // slight slide resistance
+    if (Math.random() < 0.2) {
+      const dropX = wall.left ? p.x : p.x + p.w;
+      emitBlood(dropX, p.y + p.h / 2, 1, 0.4, 0.4);
+    }
+  } else {
+    p.vy = Math.min(p.vy + GRAV, MAXFALL);
+  }
+
   moveX(p);
   moveY(p);
   if (p.inv > 0) p.inv--;
 
-  // Emit trail afterimages when running on ground
-  if (!p.trailTimer) p.trailTimer = 0;
-  if (Math.abs(p.vx) > 0.4 && p.onGround) {
-    if (p.trailTimer <= 0) {
-      const cx = p.x + p.w / 2;
-      const cy = p.y + p.h - 4;
-      const dirBias = -Math.sign(p.vx || p.face) * (0.2 + Math.random() * 0.4);
-      gameState.trails.push({
-        x: cx,
-        y: cy,
-        vx: dirBias + (Math.random() - 0.5) * 0.2,
-        vy: -0.4 - Math.random() * 0.6,
-        r: 2 + Math.random() * 3,
-        age: 0,
-        life: 30
-      });
-      p.trailTimer = 4; // frames between trail particles
+  // Lightweight blood drops while running on ground
+  if (p.onGround && Math.abs(p.vx) > 0.4) {
+    if (Math.random() < 0.35) {
+      const footX = p.face > 0 ? p.x + 2 : p.x + p.w - 2;
+      emitBlood(footX, p.y + p.h - 1, 1, 0.5, 0.3);
     }
   }
-  if (p.trailTimer > 0) p.trailTimer--;
 
+  // Jump pads (Trampolines)
+  if (gameState.jumpPads) {
+    for (const j of gameState.jumpPads) {
+      if (overlap(p, j)) {
+        p.vy = -8.6; // High leap!
+        p.onGround = false;
+        j.anim = 12;
+        sfx.spring();
+        emitBlood(p.x + p.w / 2, p.y + p.h, 6, 1.4, 0.8);
+      }
+    }
+  }
 
+  // Crumbling blocks
+  if (gameState.crumbles) {
+    for (const b of gameState.crumbles) {
+      if (b.collapsed) continue;
+      if (p.onGround && p.x + p.w > b.x && p.x < b.x + b.w && Math.abs(p.y + p.h - b.y) <= 2) {
+        if (b.timer === 0) {
+          b.timer = 24; // start crumbling countdown
+          sfx.crumble();
+        }
+      }
+    }
+  }
 
-  if (p.y > callbacks.getVH() + 30) { die(callbacks); return; }
+  if (p.y > callbacks.getVH() + 30) {
+    die(callbacks);
+    return;
+  }
 
+  // Coins / Bandages
   for (const c of gameState.coins) {
     if (c.got) continue;
-    if (overlap(p, { x: c.tx * T + 4, y: c.ty * T + 4, w: 8, h: 8 })) {
-      c.got = true; gameState.coinCount++; sfx.coin();
+    if (overlap(p, { x: c.tx * T + 3, y: c.ty * T + 3, w: 10, h: 10 })) {
+      c.got = true;
+      gameState.coinCount++;
+      sfx.coin();
     }
   }
 
+  // Enemies
   for (const e of gameState.enemies) {
     if (!e.alive || e.dead || !overlap(p, e)) continue;
-    if (p.vy > 0 && p.y + p.h - e.y < 10) { e.dead = 20; p.vy = -4.2; sfx.stomp(); }
-    else if (p.inv === 0) { die(callbacks); return; }
+    if (p.vy > 0 && p.y + p.h - e.y < 10) {
+      e.dead = 20;
+      p.vy = -4.5;
+      sfx.stomp();
+      emitBlood(e.x + e.w / 2, e.y + e.h / 2, 8, 1.5, 1.5);
+    } else if (p.inv === 0) {
+      die(callbacks);
+      return;
+    }
   }
 
-  if (p.x + p.w >= gameState.girlX && Math.abs(p.y - gameState.girlY) < 32) {
-    if (callbacks.nextLevel) callbacks.nextLevel();
+  // Bandage Girl / Goal reach
+  if (gameState.girlX > 0) {
+    const reached = (p.x + p.w >= gameState.girlX && p.x <= gameState.girlX + 16 && Math.abs(p.y - gameState.girlY) < 32);
+    if (reached) {
+      if (callbacks.nextLevel) callbacks.nextLevel();
+    }
   }
 }
