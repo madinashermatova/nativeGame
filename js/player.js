@@ -1,3 +1,5 @@
+import { resolveToxicGround, resetToxic } from './toxic.js';
+import { resolveFoundryGround, resetFoundryBodies } from './foundry.js';
 import { ACC, FRICTION, MAXV, JUMP, GRAV, MAXFALL, T } from './config.js';
 import { keys } from './input.js';
 import { sfx } from './audio.js';
@@ -49,6 +51,8 @@ export function die(callbacks) {
     gameState.state = 'over';
     return;
   }
+  if (gameState.currentLevel === 2 && gameState.foundry) resetFoundryBodies(gameState.foundry);
+  if (gameState.currentLevel === 3 && gameState.toxic) resetToxic(gameState.toxic);
   gameState.p = spawnPlayer();
   gameState.p.inv = 60;
 }
@@ -81,7 +85,7 @@ export function updatePlayer(callbacks) {
   }
 
   if (p.jumpBuf > 0) p.jumpBuf--;
-  if (p.jumpBuf > 0 && p.coyote > 0) {
+  if (p.jumpBuf > 0 && (p.coyote > 0 || gameState.currentLevel <= 2 || gameState.currentLevel === 3)) {
     p.vy = -JUMP;
     p.jumpBuf = 0;
     p.coyote = 0;
@@ -101,8 +105,18 @@ export function updatePlayer(callbacks) {
   }
 
   moveX(p);
+  const previousBottom = p.y + p.h;
   moveY(p);
+  if (gameState.currentLevel === 2) resolveFoundryGround(gameState, p, previousBottom);
+  if (gameState.currentLevel === 3) resolveToxicGround(gameState, p, previousBottom);
   if (p.inv > 0) p.inv--;
+  if ((gameState.currentLevel <= 2 || gameState.currentLevel === 3) && (Math.abs(p.vx) > 0.4 || Math.abs(p.vy) > 0.5)) {
+    emitBlood(p.face > 0 ? p.x : p.x + p.w, p.y + p.h / 2, 1, 0.3, 0.2);
+    const drop = gameState.bloodParticles.at(-1);
+    drop.vx = -p.face * 0.25;
+    drop.life = drop.maxLife = 48;
+    drop.r = 3;
+  }
 
   // Lightweight blood drops while running on ground
   if (p.onGround && Math.abs(p.vx) > 0.4) {
@@ -143,6 +157,16 @@ export function updatePlayer(callbacks) {
     return;
   }
 
+  for (const c of gameState.checkpoints || []) {
+    if (!c.active && overlap(p, {x: c.x, y: c.y - 24, w: 16, h: 40})) {
+      c.active = true;
+      gameState.spawnX = c.x;
+      gameState.spawnY = c.y;
+      gameState.checkpoint++;
+      sfx.coin();
+    }
+  }
+
   // Coins / Bandages
   for (const c of gameState.coins) {
     if (c.got) continue;
@@ -168,7 +192,7 @@ export function updatePlayer(callbacks) {
   }
 
   // Bandage Girl / Goal reach
-  if (gameState.girlX > 0) {
+  if (gameState.currentLevel !== 2 && gameState.currentLevel !== 3 && gameState.girlX > 0) {
     const reached = (p.x + p.w >= gameState.girlX && p.x <= gameState.girlX + 16 && Math.abs(p.y - gameState.girlY) < 32);
     if (reached) {
       if (callbacks.nextLevel) callbacks.nextLevel();

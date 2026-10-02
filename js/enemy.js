@@ -1,3 +1,4 @@
+import { laserMode, laserHitbox } from './traps.js';
 import { T } from './config.js';
 import { solid } from './level.js';
 import { gameState } from './state.js';
@@ -58,6 +59,14 @@ export function updateEnemies(callbacks) {
     }
   }
 
+  if (p && p.inv === 0) {
+    for (const laser of gameState.lasers || []) {
+      if (laserMode(laser, gameState.levelTick) === 'active' && overlap(p, laserHitbox(laser))) {
+        killPlayer(); return;
+      }
+    }
+  }
+
   // 3. Tikanlar (Spikes)
   if (gameState.hazards && p && p.inv === 0) {
     for (const h of gameState.hazards) {
@@ -65,6 +74,17 @@ export function updateEnemies(callbacks) {
         killPlayer();
         return;
       }
+    }
+  }
+
+  // Water pools drown the player; fire alternates between embers and flames.
+  if (p && p.inv === 0) {
+    for (const e of gameState.elements || []) {
+      const active = e.type === 'water' || (gameState.levelTick + e.phase) % 150 < 95;
+      const hitbox = e.type === 'fire'
+        ? {x: e.x + 2, y: e.y - 12, w: e.w - 4, h: e.h + 12}
+        : {x: e.x, y: e.y + 3, w: e.w, h: e.h - 3};
+      if (active && overlap(p, hitbox)) { killPlayer(); return; }
     }
   }
 

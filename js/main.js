@@ -1,8 +1,14 @@
+import { stepToxic, toxicDamage, hurtToxic, toxicInteractions } from './toxic.js';
+import { toxicSound } from './toxic-audio.js';
+import { drawToxicComplete } from './toxic-renderer.js';
+import { stepFoundry, foundryDamage, foundryInteractions } from './foundry.js';
+import { foundrySound } from './foundry-audio.js';
+import { drawFoundryComplete } from './foundry-renderer.js';
 import { VH, START_LIVES, STEP, T } from './config.js';
 import { loadLevel, COLS, ROWS } from './level.js';
 import { initAudio, sfx } from './audio.js';
 import { setupInput } from './input.js';
-import { spawnPlayer, updatePlayer } from './player.js';
+import { spawnPlayer, updatePlayer, die } from './player.js';
 import { updateEnemies } from './enemy.js';
 import { drawBackground, drawWorld, drawOverlay, drawHUD } from './renderer.js';
 import { gameState } from './state.js';
@@ -85,14 +91,31 @@ else attachStartHandler();
 
 function update() {
   gameState.anim++;
-  if (gameState.state !== 'playing') return;
+  if (gameState.state === 'levelComplete') {
+    foundrySound.setActive(false);toxicSound.setActive(false);
+    const runtime = gameState.currentLevel === 3 ? gameState.toxic : gameState.foundry;
+    runtime.completeTimer -= STEP / 1000;
+    if (runtime.completeTimer <= 0) {
+      loadLevel(gameState.currentLevel + 1);gameState.p = spawnPlayer();gameState.camX = 0;gameState.state = 'playing';
+    }
+    return;
+  }
+  if (gameState.state !== 'playing') {foundrySound.setActive(false);toxicSound.setActive(false);return;}
 
   gameState.levelTime += STEP / 1000;
+  gameState.levelTick++;
+  if (gameState.currentLevel === 2) stepFoundry(gameState, STEP / 1000, VW);
+  if (gameState.currentLevel === 3) stepToxic(gameState, STEP / 1000, VW);
 
   updatePlayer({ 
     getVH: () => VH,
     nextLevel: () => {
       sfx.win();
+      if (gameState.currentLevel === 2) {
+        gameState.state = 'levelComplete';
+        gameState.foundry.completeTimer = 1.6;
+        return;
+      }
       gameState.currentLevel++;
       loadLevel(gameState.currentLevel);
       if (gameState.state !== 'won') {
@@ -104,6 +127,22 @@ function update() {
 
   if (gameState.state !== 'playing') return;
   updateEnemies({ getVH: () => VH });
+  if (gameState.currentLevel === 2) {
+    if (foundryDamage(gameState) === 'death') {
+      foundrySound.cue('death', gameState.p.x, gameState.p.x);
+      die({getVH: () => VH});
+    } else if (foundryInteractions(gameState)) {
+      sfx.win();gameState.state = 'levelComplete';gameState.foundry.completeTimer = 1.6;
+    }
+  }
+  if (gameState.currentLevel === 3) {
+    let damage = toxicDamage(gameState, STEP / 1000);
+    if (damage === 'hurt') damage = hurtToxic(gameState);
+    if (damage === 'death') {toxicSound.cue('death', gameState.p.x, gameState.p.x);die({getVH: () => VH});}
+    else if (toxicInteractions(gameState)) {sfx.win();gameState.state = 'levelComplete';gameState.toxic.completeTimer = 1.6;}
+  }
+  foundrySound.update(gameState);
+  toxicSound.update(gameState);
   
   // Qon zarrachalarini yangilash (Lightweight dynamic blood drops)
   if (gameState.bloodParticles) {
@@ -119,7 +158,7 @@ function update() {
 
   const p = gameState.p;
   if (p) {
-    const target = clamp(p.x + p.w / 2 - VW / 2 + p.face * 20, 0, COLS * T - VW);
+    const target = clamp(p.x + p.w / 2 - (gameState.currentLevel === 3 ? VW * (p.face > 0 ? .38 : .62) : VW / 2) + p.face * (gameState.currentLevel === 3 ? 0 : gameState.currentLevel === 2 ? 48 : 20), 0, Math.max(0, COLS * T - VW));
     gameState.camX += (target - gameState.camX) * 0.1;
   }
 }
@@ -127,8 +166,22 @@ function update() {
 function render() {
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  if (gameState.currentLevel === 2 && gameState.foundry && gameState.state === 'playing') {
+    const shake = Math.min(2.4, gameState.foundry.shake);
+    ctx.translate(Math.sin(gameState.anim * 2.7) * shake, Math.cos(gameState.anim * 3.3) * shake * .65);
+  }
+  if (gameState.currentLevel === 3 && gameState.toxic && gameState.state === 'playing') {
+    const shake = Math.min(1.8, gameState.toxic.shake);
+    ctx.translate(Math.sin(gameState.anim * 2.7) * shake, Math.cos(gameState.anim * 3.3) * shake * .55);
+  }
   drawBackground(ctx, VW, gameState.camX, gameState.anim);
   if (gameState.p) drawWorld(ctx, VW, gameState.camX, gameState.p, gameState.anim, gameState);
+  ctx.restore();
+  if (gameState.state === 'levelComplete') {
+    if (gameState.currentLevel === 3) drawToxicComplete(ctx, VW);
+    else drawFoundryComplete(ctx, VW);
+  }
   if (gameState.state === 'playing') drawHUD(ctx, VW, gameState);
   drawOverlay(ctx, gameState.state, VW, VH, gameState.coinCount, gameState.coins.length, gameState.anim, gameState);
 }

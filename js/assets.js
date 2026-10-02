@@ -1,6 +1,20 @@
 const IMG_DIR = 'assets/images/';
 const load = name => { const i = new Image(); i.src = IMG_DIR + name; return i; };
 export const IMG = {
+  toxicBackground: load('l4-bg.png'),
+  toxicTile: load('l4-tile1.png'),
+  toxicPool: load('l4-tuzoq1.png'),
+  toxicBarrels: load('l4-tuzoq2.png'),
+  toxicPipe: load('l4-tuzoq3.png'),
+  toxicFan: load('l4-gaz.png'),
+  factory: load('l3-bg.png'),
+  factoryRamp: load('l3-tile1.png'),
+  factoryBridge: load('l3-tile2.png'),
+  factoryTile: load('l3-tile3.png'),
+  gear: load("l3-g'ildirak.png"),
+  gearMoving: load("l3-g'ildirak2.png"),
+  laser: load('l3-lazer.png'),
+  factorySpike: load('l3-tuzoq.png'),
   sky:    load('bg-sky.png'),
   far:    load('bg-clouds.png'),
   near:   load('bg-clouds-near.png'),

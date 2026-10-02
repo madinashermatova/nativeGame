@@ -1,6 +1,8 @@
+import { drawToxicBackground, drawToxicWorld } from './toxic-renderer.js';
+import { drawFoundryBackground, drawFoundryWorld } from './foundry-renderer.js';
 import { BASE_W, VH, T } from './config.js';
 import { IMG, ready } from './assets.js';
-import { solid, map, COLS, ROWS } from './level.js';
+import { solid, map, COLS, ROWS, levels } from './level.js';
 import { gameState } from './state.js';
 
 export const R = (ctx, x, y, w, h, c) => {
@@ -12,7 +14,31 @@ export const R = (ctx, x, y, w, h, c) => {
 // 1. FON (Background – zona bo'yicha)
 // ──────────────────────────────────────────
 export function drawBackground(ctx, VW, camX, anim) {
+  if (gameState.currentLevel === 3) {drawToxicBackground(ctx, VW, camX, gameState);return;}
   const lvl = gameState.currentLevel;
+  if (lvl === 0) {
+    R(ctx, 0, 0, VW, VH, '#dbab78');
+    if (ready(IMG.bg1)) {
+      const scale = Math.max((VW + 64) / IMG.bg1.width, VH / IMG.bg1.height);
+      const dw = IMG.bg1.width * scale, dh = IMG.bg1.height * scale;
+      const progress = camX / Math.max(1, COLS * T - VW);
+      ctx.drawImage(IMG.bg1, -(dw - VW) * progress, (VH - dh) / 2, dw, dh);
+    }
+    return;
+  }
+
+  if (lvl === 1) {
+    R(ctx, 0, 0, VW, VH, '#172b2d');
+    if (ready(IMG.bg2)) {
+      const scale = Math.max((VW + 80) / IMG.bg2.width, VH / IMG.bg2.height);
+      const dw = IMG.bg2.width * scale, dh = IMG.bg2.height * scale;
+      ctx.drawImage(IMG.bg2, -(dw - VW) * camX / Math.max(1, COLS * T - VW), VH - dh, dw, dh);
+    }
+    R(ctx, 0, 0, VW, VH, 'rgba(8, 22, 28, 0.22)');
+    return;
+  }
+
+  if (lvl === 2) {drawFoundryBackground(ctx, VW, camX, gameState);return;}
 
   // DUNYO 1 (level 0-2): Osmon va tabiat
   if (lvl < 3) {
@@ -125,6 +151,15 @@ function drawTileSprite(ctx, sx, sy, srcCol, srcRow) {
 export function drawTile(ctx, tx, ty, sx, sy) {
   const lvl = gameState.currentLevel;
   const hasTopFace = !solid(tx, ty - 1);
+  if (lvl <= 1) {
+    R(ctx, sx, sy, T, T, '#774328');
+    if (ready(IMG.tiles1)) {
+      const crop = hasTopFace ? [330, 255, 230, 225] : [905, 245, 225, 230];
+      ctx.drawImage(IMG.tiles1, ...crop, Math.round(sx), Math.round(sy), T, T);
+    }
+    if (hasTopFace) R(ctx, sx, sy, T, 2, '#8caf3d');
+    return;
+  }
 
   if (lvl < 3) {
     // Tabiat tileset: ustida o't bor = col 0, row 0; yon/pastki = col 3, row 0
@@ -218,6 +253,10 @@ export function drawJumpPad(ctx, j, cx) {
 // 5. TIKANLAR (Spikes) — l1.3.png'dan yoki pixel art
 // ──────────────────────────────────────────
 export function drawSpike(ctx, h, cx) {
+  if (gameState.currentLevel === 2 && ready(IMG.factorySpike) && h.dir === 'up') {
+    ctx.drawImage(IMG.factorySpike, 325, 224, 112, 70, h.tx * T - cx, h.ty * T + 5, T, 11);
+    return;
+  }
   const x = Math.round(h.tx * T - cx);
   const y = Math.round(h.ty * T);
   ctx.save();
@@ -281,6 +320,15 @@ export function drawSawblade(ctx, saw, cx) {
     ctx.stroke();
   }
 
+  if (gameState.currentLevel === 2) {
+    const img = saw.moving ? IMG.gearMoving : IMG.gear;
+    if (ready(img)) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(saw.angle);
+      const crop = saw.moving ? [590, 300, 360, 350] : [400, 260, 510, 500];
+      ctx.drawImage(img, ...crop, -r, -r, r * 2, r * 2);
+      ctx.restore(); return;
+    }
+  }
   // Sprite yoki pixel art
   if (ready(IMG.hazards)) {
     ctx.save();
@@ -397,28 +445,32 @@ export function drawBoy(ctx, p, cx, anim, gs) {
 // ──────────────────────────────────────────
 export function drawGirl(ctx, gx, gy, cx, anim) {
   if (gx === 0) return;
-  const x = gx - cx;
-  const y = gy - 16 + Math.sin(anim * 0.06) * 2;
-  R(ctx, x + 1, y - 2, 3, 3, '#ff3b82');
-  R(ctx, x + 6, y - 2, 3, 3, '#ff3b82');
-  R(ctx, x + 4, y - 1, 2, 2, '#ffffff');
-  R(ctx, x + 1, y + 1, 9, 7, '#f7f0df');
-  R(ctx, x + 2, y + 3, 7, 1, '#e3d5b8');
-  R(ctx, x + 1, y + 5, 9, 1, '#e3d5b8');
-  R(ctx, x + 2, y + 3, 2, 3, '#0d0b2e');
-  R(ctx, x + 6, y + 3, 2, 3, '#0d0b2e');
-  R(ctx, x + 2, y + 3, 1, 1, '#ffffff');
-  R(ctx, x + 6, y + 3, 1, 1, '#ffffff');
-  R(ctx, x + 1, y + 6, 2, 1, '#ff6b9d');
-  R(ctx, x + 7, y + 6, 2, 1, '#ff6b9d');
-  R(ctx, x + 1, y + 8, 8, 6, '#ede0c2');
-  R(ctx, x + 3, y + 9, 4, 3, '#fcedc7');
-  R(ctx, x + 2, y + 14, 2, 2, '#c4b595');
-  R(ctx, x + 6, y + 14, 2, 2, '#c4b595');
-  if (Math.sin(anim * 0.08) > 0.3) {
-    R(ctx, x + 4, y - 6, 3, 2, '#ff3b82');
-    R(ctx, x + 5, y - 4, 1, 1, '#ff3b82');
-  }
+  const x = Math.round(gx - cx - 4), y = Math.round(gy + 16 - 29 + Math.sin(anim * 0.06));
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 166, 205, 0.16)';
+  ctx.beginPath(); ctx.ellipse(x + 11, y + 16, 22, 25, 0, 0, Math.PI * 2); ctx.fill();
+  R(ctx, x + 3, y + 3, 16, 13, '#62384b');
+  R(ctx, x + 5, y + 5, 12, 11, '#ffe1c4');
+  R(ctx, x + 3, y + 2, 16, 5, '#804752');
+  R(ctx, x + 3, y + 5, 3, 12, '#62384b');
+  R(ctx, x + 16, y + 5, 3, 12, '#62384b');
+  R(ctx, x + 13, y, 4, 4, '#ff5c9b'); R(ctx, x + 18, y, 4, 4, '#ff5c9b');
+  R(ctx, x + 17, y + 1, 2, 2, '#fff3df');
+  const blink = anim % 180 > 172;
+  R(ctx, x + 7, y + 8, 2, blink ? 1 : 3, '#302443');
+  R(ctx, x + 13, y + 8, 2, blink ? 1 : 3, '#302443');
+  if (!blink) {R(ctx, x + 7, y + 8, 1, 1, '#fff');R(ctx, x + 13, y + 8, 1, 1, '#fff');}
+  R(ctx, x + 6, y + 12, 3, 1, '#f798a7');R(ctx, x + 14, y + 12, 3, 1, '#f798a7');
+  R(ctx, x + 10, y + 13, 3, 1, '#b8586b');
+  R(ctx, x + 6, y + 16, 11, 4, '#fff0df');
+  R(ctx, x + 5, y + 20, 13, 5, '#ed74a0');R(ctx, x + 3, y + 24, 17, 2, '#ffd0df');
+  R(ctx, x + 3, y + 17, 3, 5, '#ffe1c4');R(ctx, x + 17, y + 16, 3, 5, '#ffe1c4');
+  R(ctx, x + 8, y + 26, 3, 3, '#ffe1c4');R(ctx, x + 13, y + 26, 3, 3, '#ffe1c4');
+  R(ctx, x + 7, y + 28, 4, 2, '#8d4661');R(ctx, x + 13, y + 28, 4, 2, '#8d4661');
+  const heartY = y - 9 + Math.sin(anim * 0.08) * 2;
+  R(ctx, x + 9, heartY, 3, 3, '#ff719f');R(ctx, x + 13, heartY, 3, 3, '#ff719f');
+  R(ctx, x + 10, heartY + 3, 5, 2, '#ff719f');R(ctx, x + 12, heartY + 5, 1, 1, '#ff719f');
+  ctx.restore();
 }
 
 // ──────────────────────────────────────────
@@ -433,7 +485,7 @@ export function drawHUD(ctx, VW, gs) {
 
   ctx.fillStyle = '#ffd23f';
   ctx.textAlign = 'left';
-  ctx.fillText(`LVL ${gs.currentLevel + 1}/10`, 10, 8);
+  ctx.fillText(gs.currentLevel === 0 ? 'LVL 1' : `LVL ${gs.currentLevel + 1}/${levels.length}`, 10, 8);
 
   ctx.fillStyle = '#f5f5f5';
   ctx.textAlign = 'center';
@@ -450,6 +502,11 @@ export function drawHUD(ctx, VW, gs) {
 // 12. DUNYO (World render)
 // ──────────────────────────────────────────
 export function drawWorld(ctx, VW, camX, p, anim, gameState) {
+  if (gameState.currentLevel === 3) {drawToxicWorld(ctx, VW, Math.round(camX), gameState, {drawGirl, drawBoy});return;}
+  if (gameState.currentLevel === 2) {
+    drawFoundryWorld(ctx, VW, Math.round(camX), gameState, {drawGirl, drawBoy});
+    return;
+  }
   const c0 = Math.floor(camX / T), c1 = c0 + Math.ceil(VW / T) + 1;
   const cx = Math.round(camX);
 
@@ -485,6 +542,45 @@ export function drawWorld(ctx, VW, camX, p, anim, gameState) {
 
   if (gameState.coins) gameState.coins.forEach(c => drawCoin(ctx, c, cx, anim));
   if (gameState.enemies) gameState.enemies.forEach(e => drawEnemy(ctx, e, cx, anim));
+  if (gameState.currentLevel === 0) {
+    ctx.save();
+    ctx.font = '6px monospace'; ctx.fillStyle = '#fff4d4';
+    ctx.fillText('SPACE / W / UP: HAVODA HAM SAKRASH', 32 - cx, 176);
+    ctx.fillText('FINISH', gameState.girlX - cx - 12, gameState.girlY - 30);
+    ctx.restore();
+    if (ready(IMG.props)) {
+      for (const tx of [6, 23, 38, 55]) ctx.drawImage(IMG.props, 35, 320, 155, 150, tx * T - cx, 182, 26, 26);
+    }
+  }
+  if (gameState.currentLevel === 1) {
+    ctx.save(); ctx.font = '6px monospace'; ctx.fillStyle = '#fff4d4';
+    ctx.fillText('LVL 2: OLOV VA SUV', 32 - cx, 157);
+    ctx.fillText('SUVGA TUSHMA! OLOVNI SAKRAB OT.', 32 - cx, 170);
+    ctx.fillText('FINISH', gameState.girlX - cx - 12, gameState.girlY - 30);
+    ctx.restore();
+  }
+  for (const e of gameState.elements || []) {
+    const x = e.x - cx, y = e.y;
+    if (x < -T || x > VW) continue;
+    if (e.type === 'water') {
+      R(ctx, x, y + 3, T, T - 3, '#13618b');
+      R(ctx, x, y + 8, T, 8, '#0d426c');
+      const wave = Math.sin(anim * 0.12 + e.tx) * 1.5;
+      R(ctx, x, y + 3 + wave, T, 2, '#68dcf4');
+      R(ctx, x + (anim / 3 + e.tx * 3) % 12, y + 10, 3, 1, '#3d9fc3');
+    } else {
+      const active = (gameState.levelTick + e.phase) % 150 < 95;
+      R(ctx, x, y + 4, T, T - 4, '#482620');
+      R(ctx, x + 2, y + 7, 12, 3, active ? '#ff632a' : '#984331');
+      if (active) {
+        for (let i = 0; i < 3; i++) {
+          const height = 12 + Math.sin(anim * 0.23 + e.tx + i * 2) * 4;
+          R(ctx, x + 2 + i * 4, y - height, 4, height + 8, '#f45a20');
+          R(ctx, x + 3 + i * 4, y - height + 5, 2, height + 1, '#ffd65a');
+        }
+      } else R(ctx, x + 5, y + 3, 3, 2, '#d86c38');
+    }
+  }
   drawGirl(ctx, gameState.girlX, gameState.girlY, cx, anim);
   drawBoy(ctx, p, cx, anim, gameState);
 }

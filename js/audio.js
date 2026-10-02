@@ -52,3 +52,5 @@ export const sfx = {
     });
   }
 };
+
+export const getAudioContext = () => ac;
