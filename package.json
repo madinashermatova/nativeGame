@@ -1,0 +1,11 @@
+{
+  "name": "meat-runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "node tools/build-assets.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

@@ -1,5 +1,5 @@
 import { T } from './config.js';
-import { solid } from './level.js';
+import { solid } from './world.js';
 
 export function moveX(e) {
   e.x += e.vx;
@@ -29,7 +29,7 @@ export function moveY(e) {
   } else if (e.vy < 0) {
     const ty = Math.floor(e.y / T);
     for (let tx = x0; tx <= x1; tx++) {
-      if (solid(tx, ty)) { e.y = (ty + 1) * T; e.vy = 0; break; }
+      if (solid(tx, ty)) { e.y = (ty + 1) * T; e.vy = 0; if (e.gravDir === -1) e.onGround = true; break; }
     }
   }
 }

@@ -21,10 +21,4 @@ Gas starts harmless, warns after1sec and causes periodic damage after2.5sec; lea
 
 ## Architecture / scope
 
-New toxic.js, toxic-renderer.js and toxic-audio.js modules; existing level loader/player/renderer/main receive index3-only hooks. Level1x3 layouts and dedicated Foundry modules remain unchanged. No external audio library is needed: Level4 SoundManager uses the existing AudioContext, prepared noise buffers, faded chemical ambience, distance attenuation and stereo pan. Particle budget240; lethal drips have a separate bounded collection. Images load once through assets.js. Fixed-step loop supplies dt = STEP/1000. Render culls offscreen props and particles.
-
-## Verification
-
-Node tests cover liquid death/immunity, drip timing/circles, spray warnings, cumulative gas damage/recovery/ventilation, moving platform carry, collapse timing, checkpoint and chase reset, final rise, independent dt partitions, crop bounds/aspect ratio and a full playthrough using real player physics. Chrome checks actual rendering, audio, frame timing and completion/next-level handoff. Preview artifacts are saved separately.
-
-Validation completed: 25 Node tests pass (13 Toxic Waste, 12 Foundry). The actual-physics Level 4 route reaches all three checkpoints and the containment door with one death. Chrome reports no JavaScript errors, a running audio context, median animation frame 16.7ms on this machine, Level Complete and the Level 5 handoff. Nine browser previews include all eight sections and completion. This timing is a local observation, not a guarantee for every device.
+js/levels/toxic.js, toxic-render.js and toxic-audio.js, registered as a level module in js/levels/index.js. Level1x3 layouts and dedicated Foundry modules remain unchanged. No external audio library is needed: Level4 SoundManager uses the existing AudioContext, prepared noise buffers, faded chemical ambience, distance attenuation and stereo pan. Particle budget240; lethal drips have a separate bounded collection. Images load once through assets.js. Fixed-step loop supplies dt = STEP/1000. Render culls offscreen props and particles.

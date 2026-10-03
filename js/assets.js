@@ -1,32 +1,35 @@
-const IMG_DIR = 'assets/images/';
-const load = name => { const i = new Image(); i.src = IMG_DIR + name; return i; };
-export const IMG = {
-  toxicBackground: load('l4-bg.png'),
-  toxicTile: load('l4-tile1.png'),
-  toxicPool: load('l4-tuzoq1.png'),
-  toxicBarrels: load('l4-tuzoq2.png'),
-  toxicPipe: load('l4-tuzoq3.png'),
-  toxicFan: load('l4-gaz.png'),
-  factory: load('l3-bg.png'),
-  factoryRamp: load('l3-tile1.png'),
-  factoryBridge: load('l3-tile2.png'),
-  factoryTile: load('l3-tile3.png'),
-  gear: load("l3-g'ildirak.png"),
-  gearMoving: load("l3-g'ildirak2.png"),
-  laser: load('l3-lazer.png'),
-  factorySpike: load('l3-tuzoq.png'),
-  sky:    load('bg-sky.png'),
-  far:    load('bg-clouds.png'),
-  near:   load('bg-clouds-near.png'),
-  land:   load('bg-land.png'),
-  player: load('player.png'),
+import {SPRITES, BACKGROUNDS, FILES} from './atlas-data.js';
 
-  // Zona rasmlari
-  bg1:    load('l1-bg1.png'),    // Osmon / quyosh botishi (1-Dunyo foni)
-  bg2:    load('l1-bg2.png'),    // O'rmon + shaxta foni  (2-Dunyo foni)
-  tiles1: load('l1-bg3.png'),    // Tabiat tileset spritesheet (64px, 5 ustun x 2 qator = 10 sprite)
-  deco:   load('l1.1.png'),      // Yog'och qurilmalar dekoratsiyasi
-  props:  load('l1.2.png'),      // Toshlar, o'tlar, aravalari props
-  hazards:load('l1.3.png'),      // Tikanlar va arra sprite
-};
-export const ready = i => i && i.complete && i.naturalWidth > 0;
+const IMG_DIR = 'assets/images/';
+const cache = new Map();
+
+function loadImage(file) {
+  if (!file) return null;
+  if (cache.has(file)) return cache.get(file);
+  if (typeof Image === 'undefined') return null;
+  const img = new Image();
+  img.src = IMG_DIR + file;
+  cache.set(file, img);
+  return img;
+}
+
+export function preload(files = []) {
+  for (const file of files) loadImage(file);
+}
+
+const imageOf = file => (file ? loadImage(file) : null);
+export const ready = img => !!img && (img.width > 0 || img.complete);
+export const background = name => imageOf(BACKGROUNDS[name]);
+
+// Returns {img, rect:[x,y,w,h]} once the atlas texture exists, otherwise null.
+export function spriteSource(name) {
+  const def = SPRITES[name];
+  if (!def) throw new Error('Unknown sprite: ' + name);
+  const img = imageOf(def[0]);
+  return ready(img) ? {img, rect: def.slice(1)} : null;
+}
+
+// Every shipped file belonging to an atlas group, e.g. assetFiles('l3', 'l3-bg').
+export function assetFiles(...groups) {
+  return Object.keys(FILES).filter(f => groups.some(g => f === `atlas-${g}.webp` || f === `${g}.webp`));
+}

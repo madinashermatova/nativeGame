@@ -36,10 +36,6 @@ export const sfx = {
     beep(587, 880, 0.08, 'triangle', 0.06);
     beep(880, 1174, 0.12, 'square', 0.05, 0.06);
   },
-  stomp: () => {
-    beep(180, 45, 0.14, 'sawtooth', 0.07);
-    beep(120, 30, 0.1, 'square', 0.05, 0.02);
-  },
   die: () => {
     beep(350, 40, 0.25, 'sawtooth', 0.09);
     beep(280, 30, 0.35, 'square', 0.06, 0.03);

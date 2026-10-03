@@ -1,50 +1,42 @@
-import { stepToxic, toxicDamage, hurtToxic, toxicInteractions } from './toxic.js';
-import { toxicSound } from './toxic-audio.js';
-import { drawToxicComplete } from './toxic-renderer.js';
-import { stepFoundry, foundryDamage, foundryInteractions } from './foundry.js';
-import { foundrySound } from './foundry-audio.js';
-import { drawFoundryComplete } from './foundry-renderer.js';
-import { VH, START_LIVES, STEP, T } from './config.js';
-import { loadLevel, COLS, ROWS } from './level.js';
-import { initAudio, sfx } from './audio.js';
-import { setupInput } from './input.js';
-import { spawnPlayer, updatePlayer, die } from './player.js';
-import { updateEnemies } from './enemy.js';
-import { drawBackground, drawWorld, drawOverlay, drawHUD } from './renderer.js';
-import { gameState } from './state.js';
-import { clamp } from './utils.js';
+import {VH, STEP} from './config.js';
+import {gameState as gs} from './state.js';
+import {loadLevel} from './level.js';
+import {LEVELS, SOUNDS, activeLevel} from './levels/index.js';
+import {initAudio, sfx} from './audio.js';
+import {setupInput} from './input.js';
+import {spawnPlayer, updatePlayer, die} from './player.js';
+import {updateBlood} from './blood.js';
+import {drawHUD, drawOverlay} from './renderer.js';
+import {startEnding, tickEnding, drawEnding} from './ending.js';
+import './menu-art.js';
+import {beginLevelTransition, stepLevelTransition, drawLevelTransition} from './transition.js';
 
+const DT = STEP / 1000;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const menu = document.getElementById('menu');
-let startBtn = null;
+const startBtn = document.getElementById('start');
 
+gs.levelNames = LEVELS.map(level => level.name);
 let VW = 480;
 let SCALE = 2;
 
-loadLevel(0);
-
 function reset() {
-  gameState.camX = 0;
-  
-  if (gameState.state === 'won' || gameState.lives <= 0) {
-    gameState.deaths = 0;
-    gameState.coinCount = 0;
-    gameState.levelTime = 0;
-    gameState.currentLevel = 0;
-    gameState.lives = START_LIVES;
+  gs.transition = null;
+  if (gs.state === 'won') { // a finished game starts over from level 1
+    gs.deaths = 0;
+    gs.coinCount = 0;
     loadLevel(0);
   } else {
-    loadLevel(gameState.currentLevel);
+    loadLevel(gs.currentLevel); // also after "game over": same level, full lives
   }
-  
-  gameState.p = spawnPlayer();
+  gs.p = spawnPlayer();
 }
 
 function hideMenu() {
   menu.style.opacity = '0';
   menu.style.pointerEvents = 'none';
-  setTimeout(() => { if (gameState.state !== 'menu') menu.style.display = 'none'; }, 300);
+  setTimeout(() => { if (gs.state !== 'menu') menu.style.display = 'none'; }, 300);
 }
 
 function showMenu() {
@@ -55,145 +47,86 @@ function showMenu() {
 function startGame() {
   initAudio();
   reset();
-  gameState.state = 'playing';
+  gs.state = 'playing';
   hideMenu();
-  if (startBtn) startBtn.blur();
+  startBtn.blur();
 }
 
 setupInput({
-  getState: () => gameState.state,
-  onEnter: (e) => {
-    if (gameState.state === 'over' || gameState.state === 'won') {
-      startGame();
-      e.preventDefault();
-    }
+  getState: () => gs.state,
+  onEnter: e => {
+    if (gs.state !== 'over' && gs.state !== 'won') return;
+    startGame();
+    e.preventDefault();
   },
-  onEscape: (e) => {
-    if (gameState.state === 'playing') {
-      gameState.state = 'menu';
-      showMenu();
-    }
+  onEscape: () => {
+    if (gs.state !== 'playing') return;
+    gs.state = 'menu';
+    showMenu();
   },
-  onJump: () => {
-    if (gameState.p) gameState.p.jumpBuf = 8;
-  }
+  onJump: () => { if (gs.p) gs.p.jumpBuf = 8; }
 });
+startBtn.addEventListener('click', startGame);
 
-function attachStartHandler() {
-  startBtn = document.getElementById('start');
-  if (startBtn) {
-    startBtn.addEventListener('click', startGame);
-  }
+function updateSound(level) {
+  const playing = gs.state === 'playing';
+  for (const sound of SOUNDS) if (!playing || sound !== level.sound) sound.setActive(false);
+  if (playing && level.sound) level.sound.update(gs);
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachStartHandler);
-else attachStartHandler();
-
 function update() {
-  gameState.anim++;
-  if (gameState.state === 'levelComplete') {
-    foundrySound.setActive(false);toxicSound.setActive(false);
-    const runtime = gameState.currentLevel === 3 ? gameState.toxic : gameState.foundry;
-    runtime.completeTimer -= STEP / 1000;
-    if (runtime.completeTimer <= 0) {
-      loadLevel(gameState.currentLevel + 1);gameState.p = spawnPlayer();gameState.camX = 0;gameState.state = 'playing';
+  gs.anim++;
+  if (gs.state === 'levelComplete' || gs.state === 'levelOpening') {
+    updateSound(activeLevel(gs));
+    if (stepLevelTransition(gs, DT) === 'load') {
+      loadLevel(gs.currentLevel + 1);
+      if (gs.state === 'won') { gs.transition = null; startEnding(gs); return; }
+      gs.p = spawnPlayer();
+      gs.p.inv = 20;
+      activeLevel(gs).camera(gs, VW);
+      gs.state = 'levelOpening';
     }
     return;
   }
-  if (gameState.state !== 'playing') {foundrySound.setActive(false);toxicSound.setActive(false);return;}
+  const level = activeLevel(gs);
+  if (gs.state === 'won') tickEnding(gs);
+  if (gs.state !== 'playing') { updateSound(level); return; }
 
-  gameState.levelTime += STEP / 1000;
-  gameState.levelTick++;
-  if (gameState.currentLevel === 2) stepFoundry(gameState, STEP / 1000, VW);
-  if (gameState.currentLevel === 3) stepToxic(gameState, STEP / 1000, VW);
-
-  updatePlayer({ 
-    getVH: () => VH,
-    nextLevel: () => {
-      sfx.win();
-      if (gameState.currentLevel === 2) {
-        gameState.state = 'levelComplete';
-        gameState.foundry.completeTimer = 1.6;
-        return;
-      }
-      gameState.currentLevel++;
-      loadLevel(gameState.currentLevel);
-      if (gameState.state !== 'won') {
-        gameState.p = spawnPlayer();
-        gameState.camX = 0;
-      }
-    }
-  });
-
-  if (gameState.state !== 'playing') return;
-  updateEnemies({ getVH: () => VH });
-  if (gameState.currentLevel === 2) {
-    if (foundryDamage(gameState) === 'death') {
-      foundrySound.cue('death', gameState.p.x, gameState.p.x);
-      die({getVH: () => VH});
-    } else if (foundryInteractions(gameState)) {
-      sfx.win();gameState.state = 'levelComplete';gameState.foundry.completeTimer = 1.6;
-    }
-  }
-  if (gameState.currentLevel === 3) {
-    let damage = toxicDamage(gameState, STEP / 1000);
-    if (damage === 'hurt') damage = hurtToxic(gameState);
-    if (damage === 'death') {toxicSound.cue('death', gameState.p.x, gameState.p.x);die({getVH: () => VH});}
-    else if (toxicInteractions(gameState)) {sfx.win();gameState.state = 'levelComplete';gameState.toxic.completeTimer = 1.6;}
-  }
-  foundrySound.update(gameState);
-  toxicSound.update(gameState);
-  
-  // Qon zarrachalarini yangilash (Lightweight dynamic blood drops)
-  if (gameState.bloodParticles) {
-    for (let i = gameState.bloodParticles.length - 1; i >= 0; i--) {
-      const bp = gameState.bloodParticles[i];
-      bp.x += bp.vx;
-      bp.y += bp.vy;
-      bp.vy += 0.12;
-      bp.life--;
-      if (bp.life <= 0) gameState.bloodParticles.splice(i, 1);
-    }
-  }
-
-  const p = gameState.p;
-  if (p) {
-    const target = clamp(p.x + p.w / 2 - (gameState.currentLevel === 3 ? VW * (p.face > 0 ? .38 : .62) : VW / 2) + p.face * (gameState.currentLevel === 3 ? 0 : gameState.currentLevel === 2 ? 48 : 20), 0, Math.max(0, COLS * T - VW));
-    gameState.camX += (target - gameState.camX) * 0.1;
-  }
+  gs.levelTick++;
+  level.step(gs, DT, VW);
+  updatePlayer();
+  if (gs.state !== 'playing') return;
+  if (level.damage(gs, DT) === 'death') die();
+  else if (level.interact(gs) && beginLevelTransition(gs, gs.currentLevel === LEVELS.length - 1)) sfx.win();
+  updateSound(level);
+  updateBlood(gs.bloodParticles);
+  level.camera(gs, VW);
 }
 
 function render() {
+  const level = activeLevel(gs);
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.save();
-  if (gameState.currentLevel === 2 && gameState.foundry && gameState.state === 'playing') {
-    const shake = Math.min(2.4, gameState.foundry.shake);
-    ctx.translate(Math.sin(gameState.anim * 2.7) * shake, Math.cos(gameState.anim * 3.3) * shake * .65);
+  if (gs.state === 'playing' && gs[level.key]) {
+    const [shake, vertical] = level.shake(gs);
+    if (shake) ctx.translate(Math.sin(gs.anim * 2.7) * shake, Math.cos(gs.anim * 3.3) * shake * vertical);
   }
-  if (gameState.currentLevel === 3 && gameState.toxic && gameState.state === 'playing') {
-    const shake = Math.min(1.8, gameState.toxic.shake);
-    ctx.translate(Math.sin(gameState.anim * 2.7) * shake, Math.cos(gameState.anim * 3.3) * shake * .55);
-  }
-  drawBackground(ctx, VW, gameState.camX, gameState.anim);
-  if (gameState.p) drawWorld(ctx, VW, gameState.camX, gameState.p, gameState.anim, gameState);
+  level.drawBackground(ctx, VW, gs);
+  if (gs.p) level.drawWorld(ctx, VW, gs);
   ctx.restore();
-  if (gameState.state === 'levelComplete') {
-    if (gameState.currentLevel === 3) drawToxicComplete(ctx, VW);
-    else drawFoundryComplete(ctx, VW);
-  }
-  if (gameState.state === 'playing') drawHUD(ctx, VW, gameState);
-  drawOverlay(ctx, gameState.state, VW, VH, gameState.coinCount, gameState.coins.length, gameState.anim, gameState);
+  drawLevelTransition(ctx, VW, gs);
+  if (gs.state === 'playing') drawHUD(ctx, VW, gs, LEVELS.length);
+  if (gs.state === 'won') drawEnding(ctx, VW, VH, gs);
+  else drawOverlay(ctx, VW, VH, gs);
 }
 
 function resize() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
-  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
-  canvas.width = w;
-  canvas.height = h;
-  SCALE = h / VH;
-  VW = w / SCALE;
+  canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  SCALE = canvas.height / VH;
+  VW = canvas.width / SCALE;
 }
 
 window.addEventListener('resize', resize);
@@ -208,5 +141,4 @@ function frame(ts) {
   render();
   requestAnimationFrame(frame);
 }
-
 requestAnimationFrame(t => { last = t; frame(t); });

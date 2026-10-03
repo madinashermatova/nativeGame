@@ -36,10 +36,6 @@ body {
 }
 
 #stage {
-  --img-sky: url("assets/images/bg-sky.png");
-  --img-clouds-far: url("assets/images/bg-clouds.png");
-  --img-clouds-near: url("assets/images/bg-clouds-near.png");
-  --img-land: url("assets/images/bg-land.png");
   --px-font: "Press Start 2P", "Courier New", monospace;
   --ink: #0d0b2e;
   --yellow: #ffd23f;
@@ -75,7 +71,7 @@ body {
   z-index: 10;
   overflow: hidden;
 
-  background: var(--img-sky) center bottom / cover no-repeat, var(--ink);
+  background: var(--ink);
   image-rendering: pixelated;
   transition: opacity 0.3s ease;
 }
@@ -264,57 +260,14 @@ body {
   }
 }
 
-/* ---------- Suzuvchi bulutlar (chapdan o'ngga) ---------- */
-.clouds {
-  --tile: max(100vw, calc(100vh * 16 / 9));
-  /* rasm 16:9, ekranni "cover" qiladi */
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: calc(var(--tile) * 2);
-  height: calc(var(--tile) * 9 / 16);
-  z-index: 0;
-  background-repeat: repeat-x;
-  background-size: var(--tile) 100%;
-  background-position: left bottom;
-  image-rendering: pixelated;
-  pointer-events: none;
-  will-change: transform;
-  animation: drift linear infinite;
-}
-
-.clouds-far {
-  background-image: var(--img-clouds-far);
-  animation-duration: 260s;
-}
-
-.clouds-near {
-  background-image: var(--img-clouds-near);
-  animation-duration: 140s;
-}
-
-@keyframes drift {
-  from {
-    transform: translateX(-50%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-/* ---------- Tog'lar, o'rmon va yer (bulutlar ustida) ---------- */
-.land {
+/* ---------- Menyu foni: kod bilan chiziladi (js/menu-art.js) ---------- */
+#menu-art {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  background: var(--img-land) center bottom / cover no-repeat;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  object-fit: cover;
   image-rendering: pixelated;
   pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .clouds {
-    animation: none;
-  }
 }

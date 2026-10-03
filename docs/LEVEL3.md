@@ -29,17 +29,3 @@ Sprite crop dimensions determine render height, always preserving aspect ratio. 
 6. Escape x2256?2944: molten metal, diagonal/vertical platforms, saw, fire, laser. Safe freight exit x2992.
 
 Hazards have deterministic warning phases; no random lethal spawning. Steam knocks back and grants short protection; molten metal remains instant death even during protection. Respawn resets temporary bodies and debris near the checkpoint. Offscreen particle emissions and audio triggers are culled. Particles are limited to 220. Graphics are preloaded once using Image. No external audio dependency: a Level 3 SoundManager extends the existing Web Audio architecture with prebuilt noise buffers, faded ambient loops, distance attenuation and varied pitch.
-
-## Verification
-
-Run node --test tests/foundry.test.mjs. Test damage phases, molten instant death, moving-platform carry/landing, collapse/recovery, checkpoint respawn, completion/next-level handoff, PNG aspect ratios and frame-rate-independent updates. Renderer checks use a strict canvas spy; browser visual verification is reported separately when available.
-
-
-## Completed validation
-
-- 12 Node regression tests passed, including the full route with real player physics: freight exit reached after 4 deaths, both checkpoints activated, lives remaining. This demonstrates a playable route, rather than guaranteeing every input pattern is safe.
-- Chrome browser check: no JavaScript errors; Web Audio context running; Level Complete displayed; Level 4 loaded automatically after the completion cue.
-- A 60-frame sample in Chrome had a median frame interval of 16.7ms (approximately 60 FPS on the tested machine). Particle limit is 220; offscreen PNGs and hazard emissions are culled.
-- Preview images: artifacts/foundry-entry.png, foundry-press.png, foundry-ascent.png, foundry-machine.png, foundry-escape.png and foundry-complete.png.
-- Existing Level 1/2 layouts and the menu HTML/CSS remain unchanged. Four already-deleted l1 assets are not recreated or modified by this task.
-- The browser harness uses a temporary Playwright install at the Windows TEMP/foundry-verify path and the locally installed Chrome. The regular Node regression suite does not require Playwright.
