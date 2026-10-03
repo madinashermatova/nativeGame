@@ -1,4 +1,4 @@
-# 🩸 Runner
+# 🩸 Meat Runner
 
 Super Meat Boy uslubidagi tezkor platformer o'yin — **sof JavaScript** va **HTML5 Canvas** asosida, hech qanday tashqi framework yoki kutubxonasiz yozilgan.
 
@@ -134,19 +134,22 @@ node --test tests/foundry.test.mjs tests/toxic.test.mjs
 Misol:
 
 ```javascript
-[
-  "#..............................#",
-  "#..............................#",
-  "#..P......C..............G.....#",
-  "################^^^^############",
-  "################################",
-]
+{
+  background: "./assets/images/bg.png",
+  playerStart: { x: 50, y: 250 },
+  rows: [
+    "................................",
+    "..####..........................",
+    "...............................E",
+    "################################",
+  ],
+}
 ```
 
-<<<<<<< HEAD
 `#` — devor/platforma, `E` — level oxiri (manzil/exit), `.` — bo'sh joy.
 
+## 🗺️ Rejalar
 
-=======
-Level qo'shilgach, oxirgi levelni tugatish avtomatik g'alaba ekranini ko'rsatadi.
->>>>>>> 7c59e97 (readme qo'shildi)
+## 📄 Litsenziya
+
+MIT — erkin foydalanish, o'zgartirish va ulashish mumkin.
