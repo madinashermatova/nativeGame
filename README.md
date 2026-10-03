@@ -83,8 +83,4 @@ Keyin brauzerda `http://localhost:8000` manzilini oching.
 
 `#` — devor/platforma, `E` — level oxiri (manzil/exit), `.` — bo'sh joy.
 
-## 🗺️ Rejalar
 
-## 📄 Litsenziya
-
-MIT — erkin foydalanish, o'zgartirish va ulashish mumkin.
