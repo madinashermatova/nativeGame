@@ -7,6 +7,7 @@ export const ACC = 0.22;
 export const FRICTION = 0.78;
 export const MAXV = 2.4;
 export const JUMP = 5.8;
+export const MAX_JUMPS = 2; // yerdan 1 ta + havoda 1 ta
 export const GRAV = 0.28;
 export const MAXFALL = 6.5;
 export const START_LIVES = 10;

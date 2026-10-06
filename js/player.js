@@ -1,6 +1,6 @@
 import { resolveToxicGround, resetToxic } from './toxic.js';
 import { resolveFoundryGround, resetFoundryBodies } from './foundry.js';
-import { ACC, FRICTION, MAXV, JUMP, GRAV, MAXFALL, T } from './config.js';
+import { ACC, FRICTION, MAXV, JUMP, GRAV, MAXFALL, T, MAX_JUMPS } from './config.js';
 import { keys } from './input.js';
 import { sfx } from './audio.js';
 import { moveX, moveY, checkWallContact } from './physics.js';
@@ -18,10 +18,28 @@ export function spawnPlayer() {
     onGround: false, 
     touchWall: false,
     face: 1, 
-    coyote: 0, 
-    jumpBuf: 0, 
+    coyote: 0,
+    jumps: 0,
+    jumpBuf: 0,
     inv: 0 
   };
+}
+
+// Yugurganda orqadan chiqadigan tutun: kichik, asta kengayadigan va so'nadigan bulutcha
+export function emitDust(p) {
+  if (gameState.dust.length > 120) return;
+  const life = 34 + Math.floor(Math.random() * 14);
+  gameState.dust.push({
+    x: p.face > 0 ? p.x + 2 : p.x + p.w - 2,
+    y: p.y + p.h - 3 + Math.random() * 2,
+    vx: -p.face * (0.12 + Math.random() * 0.18),
+    vy: -(0.08 + Math.random() * 0.12),
+    r: 1.5 + Math.random(),
+    grow: 0.07 + Math.random() * 0.04,
+    life,
+    maxLife: life,
+    color: Math.random() < 0.5 ? '#d9d9e0' : '#b4b4c0'
+  });
 }
 
 export function emitBlood(x, y, count = 1, vxSpread = 0.5, vySpread = 0.5) {
@@ -42,10 +60,14 @@ export function emitBlood(x, y, count = 1, vxSpread = 0.5, vySpread = 0.5) {
 export function die(callbacks) {
   sfx.die();
   if (gameState.p) {
-    emitBlood(gameState.p.x + gameState.p.w / 2, gameState.p.y + gameState.p.h / 2, 22, 2.8, 2.8);
+    emitBlood(gameState.p.x + gameState.p.w / 2, gameState.p.y + gameState.p.h / 2, 26, 3.2, 3.2);
+    emitBlood(gameState.p.x + gameState.p.w / 2, gameState.p.y + gameState.p.h / 2, 10, 1.6, 1.6);
   }
   gameState.deaths++;
   gameState.lives--;
+  // Ekran qizil flash + "O'LDING" yozuvi (drawHUD da)
+  gameState.deathFlash = 28;
+  gameState.deathFlashMax = 28;
 
   if (gameState.lives <= 0) {
     gameState.state = 'over';
@@ -84,11 +106,14 @@ export function updatePlayer(callbacks) {
     p.coyote--;
   }
 
+  // Sakrashlar yerga tegilganda tiklanadi; havoda ham MAX_JUMPS dan oshmaydi
+  if (p.onGround) p.jumps = 0;
   if (p.jumpBuf > 0) p.jumpBuf--;
-  if (p.jumpBuf > 0 && (p.coyote > 0 || gameState.currentLevel <= 2 || gameState.currentLevel === 3)) {
+  if (p.jumpBuf > 0 && p.jumps < MAX_JUMPS) {
     p.vy = -JUMP;
     p.jumpBuf = 0;
     p.coyote = 0;
+    p.jumps++;
     sfx.jump();
     emitBlood(p.x + p.w / 2, p.y + p.h, 3, 1.0, 0.6);
   }
@@ -110,21 +135,8 @@ export function updatePlayer(callbacks) {
   if (gameState.currentLevel === 2) resolveFoundryGround(gameState, p, previousBottom);
   if (gameState.currentLevel === 3) resolveToxicGround(gameState, p, previousBottom);
   if (p.inv > 0) p.inv--;
-  if ((gameState.currentLevel <= 2 || gameState.currentLevel === 3) && (Math.abs(p.vx) > 0.4 || Math.abs(p.vy) > 0.5)) {
-    emitBlood(p.face > 0 ? p.x : p.x + p.w, p.y + p.h / 2, 1, 0.3, 0.2);
-    const drop = gameState.bloodParticles.at(-1);
-    drop.vx = -p.face * 0.25;
-    drop.life = drop.maxLife = 48;
-    drop.r = 3;
-  }
-
-  // Lightweight blood drops while running on ground
-  if (p.onGround && Math.abs(p.vx) > 0.4) {
-    if (Math.random() < 0.35) {
-      const footX = p.face > 0 ? p.x + 2 : p.x + p.w - 2;
-      emitBlood(footX, p.y + p.h - 1, 1, 0.5, 0.3);
-    }
-  }
+  // Yugurganda orqadan chang
+  if (p.onGround && Math.abs(p.vx) > 0.4 && Math.random() < 0.5) emitDust(p);
 
   // Jump pads (Trampolines)
   if (gameState.jumpPads) {

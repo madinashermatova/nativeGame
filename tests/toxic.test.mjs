@@ -40,12 +40,10 @@ test('full route wins using actual player physics, moving platforms and all chec
  assert(won,'route must reach containment door');assert.equal(gs.checkpoint,3);assert(deaths<=2);assert(gs.lives>0);assert(gs.toxic.chase.active);
 });
 
-test('all Level 4 PNG crops render without aspect-ratio distortion or primitive geometry',async()=>{
-  globalThis.Image=class {set src(path){this.path=path;if(fs.existsSync(path)){const b=fs.readFileSync(path);this.width=this.naturalWidth=b.readUInt32BE(16);this.height=b.readUInt32BE(20);this.complete=true;}}};
+test('Level 4 is drawn entirely in code (no images)',async()=>{
   const {toxicSprite,TOXIC_SPRITES,drawToxicBackground,drawToxicWorld}=await import('../js/toxic-renderer.js');
-  const calls=[];const ctx=new Proxy({drawImage(...a){calls.push(a);if(a.length===9){assert(Math.abs(a[7]/a[8]-a[3]/a[4])<1e-9);assert(a[1]>=0&&a[2]>=0&&a[1]+a[3]<=a[0].width&&a[2]+a[4]<=a[0].height);}},createRadialGradient(){return{addColorStop(){}};},createLinearGradient(){return{addColorStop(){}};}},{get:(o,k)=>k in o?o[k]:()=>{}});
-  for(const key of Object.keys(TOXIC_SPRITES))toxicSprite(ctx,key,0,0,56);
+  let images=0;const ctx=new Proxy({drawImage(){images++;},createRadialGradient(){return{addColorStop(){}};},createLinearGradient(){return{addColorStop(){}};}},{get:(o,k)=>k in o?o[k]:()=>{}});
+  for(const key of Object.keys(TOXIC_SPRITES))assert.equal(toxicSprite(ctx,key,0,0,56),56*TOXIC_SPRITES[key].ratio);
   const gs=fixture();for(const t of [1,2.1,2.8,3.1,4]){stepToxic(gs,t);drawToxicBackground(ctx,480,0,gs);drawToxicWorld(ctx,480,0,gs,{drawBoy(){},drawGirl(){}});}
-  const used=new Set(calls.map(c=>c[0].path));for(const n of fs.readdirSync('assets/images').filter(n=>n.startsWith('l4')))assert(used.has('assets/images/'+n));
-  const spriteCalls=calls.filter(c=>c.length===9);assert(spriteCalls.length>0);
+  assert.equal(images,0);
 });

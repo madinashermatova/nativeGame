@@ -3,6 +3,7 @@ import { T } from './config.js';
 import { solid } from './level.js';
 import { gameState } from './state.js';
 import { overlap } from './utils.js';
+import { sfx } from './audio.js';
 
 // die() ni circular import'dan saqlanish uchun flag orqali chaqiramiz
 function killPlayer() {
@@ -27,7 +28,10 @@ export function updateEnemies(callbacks) {
     const ahead = e.dir > 0 ? e.x + e.w + 1 : e.x - 1;
     const wall = solid(Math.floor(ahead / T), Math.floor((e.y + e.h / 2) / T));
     const ledge = !solid(Math.floor(ahead / T), Math.floor((e.y + e.h + 1) / T));
-    if (wall || ledge) e.dir *= -1;
+    if (wall || ledge) {
+      e.dir *= -1;
+      if (gameState.currentLevel === 5) sfx.robot();
+    }
   }
 
   // 2. Aylanuvchi arralar (Buzzsaws)

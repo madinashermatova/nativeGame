@@ -1,31 +1,10 @@
-import { IMG, ready } from './assets.js';
 import { SECTIONS } from './foundry.js';
+import { drawFactorySprite, FACTORY_RATIO } from './art.js';
 
-// Source rectangles exclude transparent margins and the damaged white area in spikes.
-export const FOUNDRY_SPRITES = {
-  wall:{image:'factory',crop:[0,0,1672,941]},
-  metal:{image:'factoryTile',crop:[240,75,410,185]},
-  bridge:{image:'factoryBridge',crop:[665,236,320,157]},
-  beam:{image:'factoryBridge',crop:[670,238,308,62]},
-  ramp:{image:'factoryRamp',crop:[500,282,305,195]},
-  gear:{image:'gear',crop:[400,250,510,510]},
-  movingGear:{image:'gearMoving',crop:[590,300,360,350]},
-  laser:{image:'laser',crop:[875,375,250,270]},
-  leftEmitter:{image:'laser',crop:[880,376,55,267]},
-  rightEmitter:{image:'laser',crop:[1054,376,65,267]},
-  spikes:{image:'factorySpike',crop:[325,224,112,70]},
-  pipe:{image:'factoryTile',crop:[263,131,157,125]},
-  lamp:{image:'factoryTile',crop:[426,133,45,66]},
-  brace:{image:'factoryTile',crop:[554,121,31,120]},
-  chunk:{image:'factoryTile',crop:[559,80,51,38]}
-};
+// Har bir sprite kodda chiziladi (art.js); ratio — balandlik/kenglik nisbati.
+export const FOUNDRY_SPRITES = Object.fromEntries(Object.keys(FACTORY_RATIO).map(k => [k, {ratio: FACTORY_RATIO[k]}]));
 export function sprite(ctx,key,x,y,width,angle=0) {
-  const def=FOUNDRY_SPRITES[key],img=IMG[def.image];
-  if(!ready(img))return 0;
-  const [sx,sy,sw,sh]=def.crop,height=width*sh/sw;
-  ctx.save();
-  if(angle){ctx.translate(x+width/2,y+height/2);ctx.rotate(angle);x=-width/2;y=-height/2;}
-  ctx.drawImage(img,sx,sy,sw,sh,x,y,width,height);ctx.restore();return height;
+  return drawFactorySprite(ctx,key,x,y,width,angle);
 }
 function glow(ctx,x,y,r,color,alpha=.5) {
   ctx.save();ctx.globalCompositeOperation='screen';
@@ -45,12 +24,12 @@ function tiled(ctx,key,x,y,width,moduleWidth) {
 export function drawFoundryBackground(ctx,vw,cx,gs) {
   const f=gs.foundry,time=f?f.time:0;
   ctx.save();
-  const bg=IMG.factory;
-  if(ready(bg)) {
-    const width=270*bg.width/bg.height,offset=(cx*.12)%width;
-    for(let x=-offset;x<vw;x+=width)ctx.drawImage(bg,x,0,width,270);
-  }
-  // Lighting overlays do not replace any PNG geometry.
+  // Fabrika devori: kodda chizilgan panellar, parallax bilan
+  const bgGrad=ctx.createLinearGradient(0,0,0,270);bgGrad.addColorStop(0,'#2a2f3d');bgGrad.addColorStop(1,'#12141c');
+  ctx.fillStyle=bgGrad;ctx.fillRect(0,0,vw,270);
+  const panelOff=(cx*.12)%160;
+  for(let x=-panelOff-160;x<vw+160;x+=160){ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(x,0,4,270);ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x+4,0,156,270);}
+  // Lighting overlays
   ctx.fillStyle='rgba(7, 8, 13, .6)';ctx.fillRect(0,0,vw,270);
   for(let i=Math.floor(cx*.28/280)-1;i<Math.ceil((cx*.28+vw)/280)+1;i++) {
     const x=i*280-cx*.28;
@@ -90,7 +69,7 @@ function surface(ctx,s,cx,vw,time) {
   const shake=warning?Math.sin(time*48)*Math.min(1.8,s.age*2):0;
   if(s.kind==='static')tiled(ctx,'metal',s.x-cx,s.y,s.w,48);
   else if(warning&&s.age>.6) {
-    // Crack warning separates two clipped pieces of the PNG rather than drawing cracks.
+    // Crack warning splits the platform into two clipped halves.
     ctx.save();ctx.beginPath();ctx.rect(s.x-cx-3,s.y,s.w/2+2,40);ctx.clip();sprite(ctx,'bridge',s.x-cx-1+shake,s.y,s.w);ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(s.x-cx+s.w/2,s.y,s.w/2+4,40);ctx.clip();sprite(ctx,'bridge',s.x-cx+2+shake,s.y+1,s.w);ctx.restore();
   } else sprite(ctx,'bridge',s.x-cx+shake,s.y,s.w);
@@ -131,7 +110,7 @@ function hazard(ctx,h,cx,time) {
     sprite(ctx,'pipe',x-2,h.y+h.h-8,26);
     if(h.mode==='warning')glow(ctx,x+10,h.y+h.h,24,h.type==='steam'?'#d4e7ee':'#ff5319',.4);
     if(h.type==='fire'&&h.mode==='active') {
-      // Flame is an effect attached to a PNG pipe mouth.
+      // Flame is drawn at the pipe mouth.
       ctx.save();const g=ctx.createLinearGradient(0,h.y,0,h.y+h.h);
       g.addColorStop(0,'rgba(255,70,10,0)');g.addColorStop(.35,'#ff7b20');g.addColorStop(.8,'#fff4a0');g.addColorStop(1,'#fffde8');
       ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x,h.y+h.h);
@@ -147,7 +126,7 @@ export function drawFoundryWorld(ctx,vw,cx,gs,actors) {
   const time=f.time;
   for(let x=Math.floor(cx/80)*80;x<cx+vw;x+=80)sprite(ctx,'beam',x-cx,0,80);
   for(const p of f.pools)molten(ctx,p,cx,time,vw);
-  // Midground furnace and pipes are PNG machinery, independently lit.
+  // Midground furnace and pipes are independently lit.
   for(const x of [1840,2150])if(visible(x,160,cx,vw)) {
     sprite(ctx,'metal',x-cx,80,160);sprite(ctx,'pipe',x+90-cx,118,48);
     glow(ctx,x+83-cx,118,65,'#ff8629',.35+.07*Math.sin(time*9));
@@ -161,7 +140,7 @@ export function drawFoundryWorld(ctx,vw,cx,gs,actors) {
     text(ctx,c.active?'SAQLANDI':'CHECKPOINT',c.x-cx-15,c.y-25,c.active?'#95ffc0':'#ffda8a',5);
   }
   for(const c of f.coins)if(!c.got&&visible(c.x,12,cx,vw)) {
-    // Pickup is an existing glowing PNG lamp; the HUD explains its healing effect.
+    // Pickup is a glowing lamp; the HUD explains its healing effect.
     sprite(ctx,'lamp',c.x-cx,c.y,9);glow(ctx,c.x+4-cx,c.y+6,15,'#e7ffae',.4);
   }
   const exit=f.exit;
@@ -173,7 +152,6 @@ export function drawFoundryWorld(ctx,vw,cx,gs,actors) {
     glow(ctx,exit.x+24-cx,exit.y+28,48,'#8cdba0',.27);
     text(ctx,'FREIGHT EXIT',exit.x-cx-9,exit.y-13,'#bfffd4',6);
   }
-  actors.drawGirl(ctx,exit.x+10,194,cx,gs.anim);
   actors.drawBoy(ctx,gs.p,cx,gs.anim,gs);
   for(const a of f.particles) {
     if(!visible(a.x,a.r,cx,vw))continue;

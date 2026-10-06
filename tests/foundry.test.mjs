@@ -64,14 +64,12 @@ test('moving machinery is independent of dt partition; particles stay bounded',(
   for(let i=0;i<a.foundry.surfaces.length;i++){assert(Math.abs(a.foundry.surfaces[i].x-b.foundry.surfaces[i].x)<1e-9);assert(Math.abs(a.foundry.surfaces[i].y-b.foundry.surfaces[i].y)<1e-9);}
   emit(a.foundry,'spark',0,0,1000);assert.equal(a.foundry.particles.length,PARTICLE_LIMIT);stepFoundry(a,5);assert(a.foundry.particles.length<PARTICLE_LIMIT);
 });
-test('all Level 3 PNG crops render without aspect-ratio distortion or primitive geometry',async()=>{
-  globalThis.Image=class {set src(path){this.path=path;if(fs.existsSync(path)){const b=fs.readFileSync(path);this.width=this.naturalWidth=b.readUInt32BE(16);this.height=b.readUInt32BE(20);this.complete=true;}}};
+test('Level 3 is drawn entirely in code (no images)',async()=>{
   const {sprite,FOUNDRY_SPRITES,drawFoundryBackground,drawFoundryWorld}=await import('../js/foundry-renderer.js');
-  const calls=[];const ctx=new Proxy({drawImage(...a){calls.push(a);if(a.length===9){assert(Math.abs(a[7]/a[8]-a[3]/a[4])<1e-9);assert(a[1]>=0&&a[2]>=0&&a[1]+a[3]<=a[0].width&&a[2]+a[4]<=a[0].height);}},createRadialGradient(){return{addColorStop(){}};},createLinearGradient(){return{addColorStop(){}};}},{get:(o,k)=>k in o?o[k]:()=>{}});
-  for(const key of Object.keys(FOUNDRY_SPRITES))sprite(ctx,key,0,0,56);
+  let images=0;const ctx=new Proxy({drawImage(){images++;},createRadialGradient(){return{addColorStop(){}};},createLinearGradient(){return{addColorStop(){}};}},{get:(o,k)=>k in o?o[k]:()=>{}});
+  for(const key of Object.keys(FOUNDRY_SPRITES))assert.equal(sprite(ctx,key,0,0,56),56*FOUNDRY_SPRITES[key].ratio);
   const gs=fixture();for(const t of [1,2.1,2.8,3.1,4]){stepFoundry(gs,t);drawFoundryBackground(ctx,480,0,gs);drawFoundryWorld(ctx,480,0,gs,{drawBoy(){},drawGirl(){}});}
-  const used=new Set(calls.map(c=>c[0].path));for(const n of fs.readdirSync('assets/images').filter(n=>n.startsWith('l3')))assert(used.has('assets/images/'+n));
-  const spriteCalls=calls.filter(c=>c.length===9);assert(spriteCalls.length>0);
+  assert.equal(images,0);
 });
 
 

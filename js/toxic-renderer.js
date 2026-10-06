@@ -1,34 +1,9 @@
-import { IMG, ready } from './assets.js';
 import { TOXIC_SECTIONS } from './toxic.js';
-export const TOXIC_SPRITES={
-  wall:{image:'toxicBackground',crop:[0,0,1672,941]},
-  tile:{image:'toxicTile',crop:[435,379,200,180]},
-  bridge:{image:'toxicTile',crop:[435,379,200,120]},
-  stripe:{image:'toxicBarrels',crop:[250,552,190,88]},
-  support:{image:'toxicTile',crop:[94,600,78,290]},
-  debris:{image:'toxicTile',crop:[107,600,70,62]},
-  liquid:{image:'toxicPool',crop:[430,518,240,205]},
-  leak:{image:'toxicPool',crop:[520,540,170,45]},
-  poolTank:{image:'toxicPool',crop:[5,214,1438,710]},
-  barrel:{image:'toxicBarrels',crop:[214,207,285,335]},
-  barrelAssembly:{image:'toxicBarrels',crop:[40,185,1370,700]},
-  pipe:{image:'toxicPipe',crop:[20,35,1200,310]},
-  pipeLeg:{image:'toxicPipe',crop:[933,492,248,552]},
-  stream:{image:'toxicPipe',crop:[774,360,126,620]},
-  fan:{image:'toxicFan',crop:[0,0,1254,1254]},
-  rotor:{image:'toxicFan',crop:[345,330,470,550]},
-  mist:{image:'toxicFan',crop:[850,620,340,490]},
-  tank:{image:'toxicBackground',crop:[690,12,225,330]},
-  stairs:{image:'toxicBackground',crop:[143,410,131,105]},
-  lamp:{image:'toxicBackground',crop:[307,270,32,18]},
-  door:{image:'toxicBackground',crop:[35,303,102,102]},
-  chain:{image:'toxicBackground',crop:[1070,0,21,186]}
-};
+import { drawToxicSprite, TOXIC_RATIO } from './art.js';
+// Har bir sprite kodda chiziladi (art.js); ratio — balandlik/kenglik nisbati.
+export const TOXIC_SPRITES = Object.fromEntries(Object.keys(TOXIC_RATIO).map(k => [k, {ratio: TOXIC_RATIO[k]}]));
 export function toxicSprite(ctx,key,x,y,width,angle=0,flip=false){
-  const {image,crop}=TOXIC_SPRITES[key],img=IMG[image];if(!ready(img))return 0;
-  const [sx,sy,sw,sh]=crop,height=width*sh/sw;
-  ctx.save();if(angle||flip){ctx.translate(x+width/2,y+height/2);ctx.rotate(angle);if(flip)ctx.scale(-1,1);x=-width/2;y=-height/2;}
-  ctx.drawImage(img,sx,sy,sw,sh,x,y,width,height);ctx.restore();return height;
+  return drawToxicSprite(ctx,key,x,y,width,angle,flip);
 }
 const visible=(x,w,cx,vw)=>x+w>cx-40&&x<cx+vw+40;
 function glow(ctx,x,y,r,color,alpha=.25){
@@ -41,17 +16,47 @@ function tileSpan(ctx,key,x,y,width,size=48){
   ctx.save();ctx.beginPath();ctx.rect(x,y,width,270-y);ctx.clip();
   for(let dx=0;dx<width;dx+=size)toxicSprite(ctx,key,x+dx,y,size);ctx.restore();
 }
+const labHash=n=>{const s=Math.sin(n*127.1+311.7)*43758.5453;return s-Math.floor(s);};
 export function drawToxicBackground(ctx,vw,cx,gs){
-  const f=gs.toxic,time=f?f.time:0;ctx.save();const bg=IMG.toxicBackground;
-  if(ready(bg)){const w=270*bg.width/bg.height,off=(cx*.15)%w;for(let x=-off;x<vw;x+=w)ctx.drawImage(bg,x,0,w,270);}
-  ctx.fillStyle='rgba(4,13,10,.46)';ctx.fillRect(0,0,vw,270);
-  ctx.save();ctx.globalAlpha=.18;const farOff=(cx*.08)%340;
-  for(let x=-farOff-100;x<vw;x+=340)toxicSprite(ctx,'tank',x,18,120);ctx.restore();
-  const pipeOff=(cx*.3)%320;
-  for(let x=-pipeOff-100;x<vw;x+=320){ctx.save();ctx.globalAlpha=.32;toxicSprite(ctx,'pipe',x,64,140);toxicSprite(ctx,'pipeLeg',x+91,95,28);ctx.restore();
-    toxicSprite(ctx,'lamp',x+40,112,12);glow(ctx,x+46,115,35,'#fba247',.12+.035*Math.sin(time*4+x));}
-  const machineOff=(cx*.45)%410;
-  for(let x=-machineOff-90;x<vw;x+=410){ctx.save();ctx.globalAlpha=.35;toxicSprite(ctx,'barrelAssembly',x,132,135);ctx.restore();glow(ctx,x+80,164,42,'#a4df37',.12);}
+  const f=gs.toxic,time=f?f.time:0;ctx.save();
+  // Kimyo laboratoriyasi devori: sovuq yashil-kulrang gradient, yumshoq yorug'lik
+  const wall=ctx.createLinearGradient(0,0,0,270);wall.addColorStop(0,'#1f3029');wall.addColorStop(0.7,'#15221c');wall.addColorStop(1,'#0b130f');
+  ctx.fillStyle=wall;ctx.fillRect(0,0,vw,270);
+  // Keramik plitka: vertikal va gorizontal chokli (sekin parallax)
+  const tileOff=(cx*.15)%24;ctx.fillStyle='rgba(190,230,205,.05)';
+  for(let x=-tileOff;x<vw;x+=24)ctx.fillRect(Math.round(x),0,1,200);
+  for(let y=0;y<200;y+=12)ctx.fillRect(0,y,vw,1);
+  // Tavandagi lampalar yorug'ligi (yumshoq konus)
+  for(let x=-((cx*.1)%160);x<vw+160;x+=160){
+    const g=ctx.createLinearGradient(x+80,0,x+80,200);g.addColorStop(0,'rgba(220,255,225,.10)');g.addColorStop(1,'rgba(220,255,225,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x+74,0);ctx.lineTo(x+86,0);ctx.lineTo(x+110,200);ctx.lineTo(x+50,200);ctx.closePath();ctx.fill();
+  }
+  // Javonlar va shisha kolbalar (o'rta parallax): ichida zaharli va rangli suyuqlik
+  const shelfOff=(cx*.3)%96;
+  for(const sy of [70,136]){
+    ctx.fillStyle='#34483f';ctx.fillRect(0,sy,vw,4);ctx.fillStyle='#22332b';ctx.fillRect(0,sy+4,vw,3);
+    for(let x=-shelfOff;x<vw+96;x+=96){
+      const idx=Math.round((x+cx*.3)/96)+sy;
+      for(let k=0;k<3;k++){
+        const fx=x+10+k*26,h=18+labHash(idx+k)*10,liq=labHash(idx*3+k)>.55?'rgba(120,230,60,.7)':'rgba(230,200,70,.55)';
+        // Shisha
+        ctx.fillStyle='rgba(200,235,220,.16)';ctx.beginPath();ctx.roundRect?ctx.roundRect(fx,sy-h,14,h,3):ctx.rect(fx,sy-h,14,h);ctx.fill();
+        // Suyuqlik (pastki qismi)
+        ctx.fillStyle=liq;ctx.fillRect(fx+1,sy-h*.55,12,h*.55-1);
+        // Bo'yin va yorug' chiziq
+        ctx.fillStyle='rgba(230,250,240,.3)';ctx.fillRect(fx+11,sy-h+3,1,h-6);ctx.fillRect(fx+5,sy-h-4,4,4);
+      }
+    }
+  }
+  // Devor quvurlari (orqa parallax)
+  const pipeOff=(cx*.22)%240;
+  ctx.save();ctx.globalAlpha=.5;
+  for(let x=-pipeOff-60;x<vw+60;x+=240){ctx.fillStyle='#3f5249';ctx.fillRect(x,30,240,6);ctx.fillStyle='#5b7266';ctx.fillRect(x,30,240,2);ctx.fillStyle='#2e3d35';ctx.fillRect(x+60,26,8,14);}
+  ctx.restore();
+  // Zaharli bug: pastdagi yashil nur (nafas oladi)
+  const pulse=.5+.5*Math.sin(time*2.2);
+  glow(ctx,vw*.5,240,vw*.6,'#7dff3a',.10+.05*pulse);
+  ctx.fillStyle='rgba(4,12,8,.35)';ctx.fillRect(0,0,vw,270);
   ctx.restore();
 }
 function pool(ctx,pool,cx,time,vw){
@@ -60,7 +65,7 @@ function pool(ctx,pool,cx,time,vw){
   ctx.save();ctx.beginPath();ctx.moveTo(l,270);ctx.lineTo(l,y);
   for(let x=l;x<r;x+=6)ctx.lineTo(x,y+Math.sin((x+cx)*.09+time*2.4)*1.3);
   ctx.lineTo(r,y);ctx.lineTo(r,270);ctx.closePath();ctx.clip();
-  // Liquid geometry comes exclusively from the toxic pool PNG, repeated at native ratio.
+  // Liquid tiles keep the sprite native ratio.
   const tileH=48*205/240;
   for(let py=y-3;py<270;py+=tileH)for(let px=Math.floor((l+cx)/48)*48-cx;px<r;px+=48)toxicSprite(ctx,'liquid',px,py,48);
   ctx.restore();
@@ -75,7 +80,7 @@ function platform(ctx,s,cx,vw,time){
     ctx.save();ctx.beginPath();ctx.rect(s.x-cx+s.w/2,s.y,s.w/2+4,80);ctx.clip();toxicSprite(ctx,'bridge',s.x-cx+2+shake,s.y+1,s.w);ctx.restore();
   }else if(s.kind==='static')tileSpan(ctx,'tile',s.x-cx,s.y,s.w);
   else toxicSprite(ctx,'bridge',s.x-cx+shake,s.y,s.w);
-  // An existing PNG warning band marks safe solid platform faces.
+  // Warning band marks solid platform faces.
   if(s.kind!=='static')toxicSprite(ctx,'stripe',s.x+s.w/2-cx-14,s.y+12,28);
   if(s.kind==='moving'){ctx.save();ctx.globalAlpha=.42;for(let y=24;y<s.y;y+=31)toxicSprite(ctx,'support',s.x+s.w/2-cx-4,y,8);ctx.restore();}
   if(s.kind==='collapse'&&age>.2){glow(ctx,s.x+s.w/2-cx,s.y,24,'#ed9e35',.25);label(ctx,'YEMIRILMOQDA!',s.x-cx,s.y-7,'#ffc580',5);}
@@ -97,7 +102,7 @@ export function drawToxicWorld(ctx,vw,cx,gs,actors){
     glow(ctx,x+90-cx,129,45,'#b5ef38',.18);
   }
   for(const s of f.surfaces)platform(ctx,s,cx,vw,time);
-  for(const r of f.ramps)if(visible(r.x,r.w,cx,vw))toxicSprite(ctx,'stairs',r.x-cx,r.y,r.w,0,true);
+  for(const r of f.ramps)if(visible(r.x,r.w,cx,vw))toxicSprite(ctx,'stairs',r.x-cx,r.y,r.w);
   for(const h of f.drips)if(visible(h.x-60,100,cx,vw)){
     toxicSprite(ctx,'pipe',h.x-55-cx,h.y-20,80);toxicSprite(ctx,'pipeLeg',h.x+4-cx,h.y,16);
     if(h.warning){glow(ctx,h.x-cx,h.y,26,'#edc949',.35);label(ctx,'ACID!',h.x-cx-9,h.y-25,'#ffd98a',5);}
@@ -134,7 +139,7 @@ export function drawToxicWorld(ctx,vw,cx,gs,actors){
   const exit=f.exit;if(visible(exit.x,72,cx,vw)){
     toxicSprite(ctx,'door',exit.x-cx,exit.y-8,72);glow(ctx,exit.x+36-cx,exit.y+40,40,'#caf7c3',.22);label(ctx,'CONTAINMENT EXIT',exit.x-cx-13,exit.y-16,'#d9ffd7',6);
   }
-  actors.drawGirl(ctx,exit.x+24,130,cx,gs.anim);actors.drawBoy(ctx,gs.p,cx,gs.anim,gs);
+  actors.drawBoy(ctx,gs.p,cx,gs.anim,gs);
   for(const d of f.drops)if(visible(d.x,8,cx,vw)){
     ctx.save();ctx.fillStyle='#d7ff57';ctx.beginPath();ctx.ellipse(d.x-cx,d.y,d.r*.7,d.r*1.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
   }
@@ -146,12 +151,12 @@ export function drawToxicWorld(ctx,vw,cx,gs,actors){
   for(let x=410-off;x<vw;x+=420){toxicSprite(ctx,'chain',x+Math.sin(time*.5)*2,0,6);toxicSprite(ctx,'pipeLeg',x+70,224,22);}
   ctx.restore();
   label(ctx,TOXIC_SECTIONS[f.section].name,12,29,'#d5f2b5',7);
-  if(gs.p&&gs.p.x<180){label(ctx,'LEVEL 4 / TOXIC WASTE',32-cx,139,'#d8ffab',8);label(ctx,'YORQIN SUYUQLIK: XATAR. SARIQ CHIZIQ: TAYANCH.',32-cx,150,'#b7c2a9',5);}
+  if(gs.p&&gs.p.x<180){label(ctx,'LEVEL 4 / KIMYO LABORATORIYASI',32-cx,139,'#d8ffab',7);label(ctx,'ZAHARLI IDISHLAR VA SUYUQLIK: XAVFLI. SARIQ CHIZIQ: TAYANCH.',32-cx,150,'#b7c2a9',5);}
   if(g.warning){label(ctx,g.exposure>=2.5?'GAZ ZARAR YETKAZYAPTI!':'GAZ! YUQORIGA CHIQ!',vw/2-64,43,'#ffd088',7);}
   if(f.chase.active&&gs.p&&gs.p.x>=5504)label(ctx,f.chase.elapsed<2?'TANK BUZILDI! QOCH!':'QOCH! ZAHAR KOTARILMOQDA!',vw/2-76,43,'#f3ff91',7);
   if(f.flash>0){ctx.save();ctx.globalAlpha=f.flash;ctx.fillStyle='#caff70';ctx.fillRect(0,0,vw,270);ctx.restore();}
 }
 export function drawToxicComplete(ctx,vw){
   ctx.save();ctx.fillStyle='rgba(4,15,9,.86)';ctx.fillRect(0,0,vw,270);
-  label(ctx,'LEVEL 4 COMPLETE',vw/2-77,110,'#dfffaf',12);label(ctx,'TOXIC WASTE ORTDA QOLDI',vw/2-75,133,'#b3d594',8);ctx.restore();
+  label(ctx,'LEVEL 4 COMPLETE',vw/2-77,110,'#dfffaf',12);label(ctx,'LABORATORIYA ORTDA QOLDI',vw/2-75,133,'#b3d594',8);ctx.restore();
 }

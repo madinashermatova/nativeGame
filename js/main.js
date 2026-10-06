@@ -5,14 +5,15 @@ import { stepFoundry, foundryDamage, foundryInteractions } from './foundry.js';
 import { foundrySound } from './foundry-audio.js';
 import { drawFoundryComplete } from './foundry-renderer.js';
 import { VH, START_LIVES, STEP, T } from './config.js';
-import { loadLevel, COLS, ROWS } from './level.js';
+import { loadLevel, COLS, ROWS, levels } from './level.js';
 import { initAudio, sfx } from './audio.js';
 import { setupInput } from './input.js';
 import { spawnPlayer, updatePlayer, die } from './player.js';
 import { updateEnemies } from './enemy.js';
-import { drawBackground, drawWorld, drawOverlay, drawHUD } from './renderer.js';
+import { drawBackground, drawWorld, drawOverlay, drawHUD, drawTransition } from './renderer.js';
 import { gameState } from './state.js';
 import { clamp } from './utils.js';
+import { prepareStart } from './game-flow.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -25,22 +26,8 @@ let SCALE = 2;
 loadLevel(0);
 
 function reset() {
-  gameState.camX = 0;
-  
-  if (gameState.state === 'won' || gameState.lives <= 0) {
-    gameState.deaths = 0;
-    gameState.coinCount = 0;
-    gameState.levelTime = 0;
-    gameState.currentLevel = 0;
-    gameState.lives = START_LIVES;
-    loadLevel(0);
-  } else {
-    loadLevel(gameState.currentLevel);
-  }
-  
-  gameState.p = spawnPlayer();
+  prepareStart(gameState, loadLevel, spawnPlayer, START_LIVES);
 }
-
 function hideMenu() {
   menu.style.opacity = '0';
   menu.style.pointerEvents = 'none';
@@ -89,14 +76,43 @@ function attachStartHandler() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachStartHandler);
 else attachStartHandler();
 
+// Levellar orasidagi o'tish: eshik ovozi, iris animatsiyasi, keyingi level yuklanadi
+function startTransition(next) {
+  if (next >= levels.length) { sfx.win(); loadLevel(next); return; }
+  const hasDoor = gameState.girlX > 0;
+  gameState.transition = {
+    next, t: 0, half: 0.7, total: 1.9, loaded: false,
+    cx: hasDoor ? gameState.girlX - gameState.camX + 8 : VW / 2,
+    cy: hasDoor ? gameState.girlY + 4 : VH / 2
+  };
+  gameState.state = 'transition';
+  sfx.door();
+}
+
 function update() {
   gameState.anim++;
+  if (gameState.state === 'transition') {
+    const tr = gameState.transition;
+    tr.t += STEP / 1000;
+    if (!tr.loaded && tr.t >= tr.half) {
+      loadLevel(tr.next);
+      gameState.p = spawnPlayer();
+      gameState.camX = 0;
+      tr.loaded = true;
+    }
+    if (tr.t >= tr.total) {
+      gameState.transition = null;
+      gameState.state = 'playing';
+      sfx.levelStart();
+    }
+    return;
+  }
   if (gameState.state === 'levelComplete') {
     foundrySound.setActive(false);toxicSound.setActive(false);
     const runtime = gameState.currentLevel === 3 ? gameState.toxic : gameState.foundry;
     runtime.completeTimer -= STEP / 1000;
     if (runtime.completeTimer <= 0) {
-      loadLevel(gameState.currentLevel + 1);gameState.p = spawnPlayer();gameState.camX = 0;gameState.state = 'playing';
+      startTransition(gameState.currentLevel + 1);
     }
     return;
   }
@@ -110,18 +126,12 @@ function update() {
   updatePlayer({ 
     getVH: () => VH,
     nextLevel: () => {
-      sfx.win();
       if (gameState.currentLevel === 2) {
         gameState.state = 'levelComplete';
         gameState.foundry.completeTimer = 1.6;
         return;
       }
-      gameState.currentLevel++;
-      loadLevel(gameState.currentLevel);
-      if (gameState.state !== 'won') {
-        gameState.p = spawnPlayer();
-        gameState.camX = 0;
-      }
+      startTransition(gameState.currentLevel + 1);
     }
   });
 
@@ -144,6 +154,22 @@ function update() {
   foundrySound.update(gameState);
   toxicSound.update(gameState);
   
+  // Chang zarrachalarini yangilash
+  if (gameState.dust) {
+    for (let i = gameState.dust.length - 1; i >= 0; i--) {
+      const d = gameState.dust[i];
+      d.x += d.vx;
+      d.y += d.vy;
+      d.vx *= 0.97;
+      d.vy *= 0.96;
+      d.r += d.grow || 0;
+      d.life--;
+      if (d.life <= 0) gameState.dust.splice(i, 1);
+    }
+  }
+  if (gameState.deathFlash > 0) gameState.deathFlash--;
+  if (gameState.currentLevel === 5 && gameState.levelTick % 240 === 0) sfx.steam();
+
   // Qon zarrachalarini yangilash (Lightweight dynamic blood drops)
   if (gameState.bloodParticles) {
     for (let i = gameState.bloodParticles.length - 1; i >= 0; i--) {
@@ -184,6 +210,7 @@ function render() {
   }
   if (gameState.state === 'playing') drawHUD(ctx, VW, gameState);
   drawOverlay(ctx, gameState.state, VW, VH, gameState.coinCount, gameState.coins.length, gameState.anim, gameState);
+  if (gameState.state === 'transition') drawTransition(ctx, VW, VH, gameState);
 }
 
 function resize() {
